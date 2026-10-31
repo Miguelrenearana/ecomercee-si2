@@ -321,9 +321,9 @@ Tanto el Frontend Web como la App Móvil operan bajo autenticación **JWT sin es
 
 | Rol | Ámbito (*Scope*) | Permisos y Capacidades |
 | :--- | :--- | :--- |
-| **Superadministrador** | Global Multi-empresa | Registro y supervisión de tenants, gestión de planes SaaS (Básico/Pro) y auditoría global. |
+| **Superadministrador** | Global Multi-empresa | Registro y supervisión de tenants, gestión de planes SaaS (Básico, Pro, Empresarial) y auditoría global. |
 | **Administrador de Tienda** | Tenant Completo | Creación de sucursales (bajo límite de plan), gestión del catálogo general, visualización de reportes IA y balances. |
 | **Encargado de Sucursal** | Sucursal (`branch_id`) | Control de inventario físico local, solicitudes y aprobación de traspasos de ropa, atención y cancelación de reservas. |
-| **Cajero / Vendedor** | Sucursal (`branch_id`) | Facturación en mostrador (POS online/offline), cobro de diferencias en cambios de talla (CU19) y devoluciones (CU20). |
+| **Cajero / Vendedor** | Sucursal (`branch_id`) | Facturación en mostrador (POS online/offline), cobro de diferencias en cambios de talla (CU17) y devoluciones con nota de crédito (CU18). |
 | **Cliente** | Usuario (`sub`) | Exploración de catálogo, carrito de compra, pago digital con Stripe, reservas de stock y probador AR. |
 | **Proveedor** | Proveedor (`provider_id`) | Consulta de órdenes de abastecimiento y actualización de disponibilidad de prendas provistas. |

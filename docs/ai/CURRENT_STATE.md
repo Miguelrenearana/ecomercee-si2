@@ -1,68 +1,75 @@
 # CURRENT STATE — FASHIONSTORE SAAS MULTITENANT
-
-## Estado Consolidado del Proyecto (28 de Octubre de 2026)
-
-### 1. Resumen de Casos de Uso (Total: 28 CUs)
-* **Casos de Uso del 1er Parcial (Modificados/Preservados):** 12 CUs (Base operativa lista; con `tenant_id` y aislamiento en base de datos activo).
-* **Casos de Uso Exclusivos del 2do Parcial (Nuevos/Extras):** 16 CUs (En proceso de implementación incremental).
-* **Progreso Global Consolidado:**
-  - `CU01` (Tenants): Backend, base de datos y portal Superadmin operativos.
-  - `CU02` (Planes y Suscripciones): Catálogo de planes, auditoría y Downgrade Guard operativos.
-  - `CU03` (Autenticación Multitenant): Token JWT con inyección de `tenant_id`, `rol`, `branch_id`, tests unitarios pasando.
-  - `CU04` (Gestionar Sucursales Bajo Límites del Plan): Migración 0040 (geo/auditoría), endpoints `/api/branches/quota`, validación estricta de cuotas (2 vs 10 sucursales), aislamiento multitenant y UI en Angular 21 100% operativos.
-  - `CU05` (Perfil de Usuario): Rutas `/api/users/me` (consulta y actualización de perfil) verificadas y probadas.
-  - `CU06` & `CU07` (Catálogo Multitenant, Variantes y Filtros): **100% blindado a nivel de backend y frontend**. Aislamiento estricto por `tenant_id` en CRUD de prendas, persistencia transaccional con `db.commit()`, soporte de precios diferenciados por talla para CU19, filtros facetados multicriterio y suite exhaustiva de pruebas ([`test_cu06_cu07_multitenant_catalog.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu06_cu07_multitenant_catalog.py)).
-  - `CU08` & `CU09` (Catálogo Offline y Sincronización en IndexedDB/SQLite): **100% implementado y probado en Web y Mobile**. Motor IndexedDB nativo en [`idb-catalog.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-catalog.service.ts) y SQLite nativo en Flutter [`local_catalog_db.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/core/storage/local_catalog_db.dart).
-  - `CU10` (Disponibilidad por Sucursal): **100% blindado y completado** en Web y Mobile. Backend multisede (`/api/catalog/availability`), modal responsivo en Angular y Bottom Sheet en Flutter.
-  - `CU11` (Traslados de Mercadería entre Sucursales): **100% implementado y probado (Presentación 2)**. Migración Alembic `0042` aplicada (`inventory_transfers` e `inventory_transfer_items`). Dominio `p3_gestion_inventario_disponibilidad` con endpoints REST `/api/inventory/transfers`. Frontend Web operativo en `/app/admin/transfers`.
-  - `CU12` (Comprar Prendas con Stripe y Despacho Condicionado): **100% implementado y blindado en Backend, Frontend Web y Mobile Flutter**. Migración Alembic `0043` (`delivery_type`, `shipping_address`, `tracking_number`, `dispatched_at`). Cumplimiento inviolable de la **Política de Negocio 3**: despacho bloqueado si `payment_status != 'paid'`. Línea de vida ICONIX de 5 etapas en Web y Mobile. Suite backend (5/5 PASSED) y suite Flutter (10/10 PASSED).
-  - `CU13` (Crear Reserva de Prendas con Vencimiento): **Backend y Frontend Web 100% blindados, implementados y probados**.
-    - **Backend:** Paquete `p4_gestion_compras_reservas` enriquecido con aislamiento multitenant estricto (`tenant_id`), bloqueo atómico de inventario (`reserved_quantity` con `with_for_update()`), validación estricta de fecha de visita (intervalo de hoy hasta 7 días), cálculo automático de fecha límite (`expires_at = visit_date + 24h`), generación de código amigable (`reservation_code: RES-XXXXXXXX`), payload para código QR (`FS-RES:UUID`), soporte de contingencia offline con idempotencia (`client_reservation_id UUID`) y liberación automática de stock vencido (Política 6). Suite de pruebas exhaustiva: 7/7 PASSED ([`test_cu13_reservations_with_expiration.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu13_reservations_with_expiration.py)).
-    - **Frontend Web:** Rediseño estético y funcional completado con lineamientos de alta costura (`/frontend-design` y `/design-taste-frontend`). Paleta de marca integrada (`#f8baa3`, `#E07A5F`, `#191c21`), tipografía Montserrat Regular (400) asegurada en sidebar, favicon y logo de carrito FashionStore en lugar de ACID Web/Angular, banner de contingencia offline con almacenamiento local IndexedDB ([`idb-reservations.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-reservations.service.ts)), pills dinámicas de disponibilidad por sucursal (Emerald si stock > 0, Rose si 0), dossier flotante de reserva con validación de fechas (hoy a +7 días) y recordatorio de vencimiento a 24h, modal de confirmación con código y QR, y vista "Mis Reservas" con tickets boutique y sincronización de apartados offline con un clic. Verificación TypeScript (`tsc --noEmit`): 0 errores.
+### Plataforma SaaS Multitenant E-Commerce (Sistemas 2 - 2026)
+**Fecha de Corte:** 31 de Octubre de 2026  
+**Alcance Oficial:** 25 Casos de Uso Definitivos (Consolidados para el 2do Parcial)
 
 ---
 
-### 2. Estado por Componente Arquitectónico
+## 1. Resumen de Estado de Casos de Uso (Total: 25 CUs)
 
-#### Base de Datos (PostgreSQL 15+)
-* **Consolidación Definitiva de Esquema (Migración 0044 - Head):**
-  - **Migración Maestra 0044 Aplicada (`0044_complete_database_schema_all_use_cases.py`):**
-    - **Aislamiento SaaS Multitenant completado:** `tenant_id` con FK a `companies.id` e índices agregados a `reservations`, `reservation_items`, `sales`, `sale_items`, `conversations`, `conversation_messages`, `promotion_codes` y `promotion_code_usages`.
-    - **Soporte Offline e Idempotencia (CU16, CU18):** `client_sale_id UUID UNIQUE`, `is_offline BOOLEAN`, `synced_at`, `idempotency_key` en `sales`; nueva tabla `sync_operations` con `client_operation_id UNIQUE`.
-    - **Políticas de Negocio Inviolables (CU19, CU20):** Nuevas tablas `garment_exchanges` (Política 1: diferencia de precio abonada obligatoria) y `garment_returns` (Política 2: retención operativa 20%-50% y reembolso 50%-80%).
-    - **Inteligencia Artificial y Analítica (CU23, CU25, CU26, CU27):** Nuevas tablas `ml_models` (auditoría), `demand_forecasts` (predicciones RandomForest a 4 semanas) y `customer_segments` (clustering K-Means RFM + devoluciones).
-    - **Resolución de Conflictos de Reservas (CU14):** Columnas `resolved_at`, `resolved_by` y `resolution_note` en `reservations`.
-  - **Base de datos congelada:** 100% lista para los 28 Casos de Uso del semestre sin requerir futuras migraciones DDL.
-* **Datos Sembrados y Cuentas Operativas Verificadas:**
-  - Superadmin Global: `superadmin@fashionstore.com` / `SuperAdmin2026!`
-  - Admin Boutique Elegance: `admin@elegance.com` / `AdminElegance2026!`
-  - Encargado Boutique Elegance: `encargado@elegance.com` / `Encargado123!`
-  - Cajero Boutique Elegance: `cajero@elegance.com` / `Cajero123!`
-  - Cliente Boutique Elegance: `cliente@elegance.com` / `Cliente123!` (y `cliente_cu12@test.com` / `Cliente123!`)
-  - Admin Moda Urbana (Plan Básico): `admin@modaurbana.com` / `AdminUrbana2026!`
-
-#### Backend (FastAPI + SQLAlchemy)
-* **Estructura:** Modularizada en 7 paquetes de dominio autónomos (`p0_saas_plataforma` a `p6_inteligencia_analitica`).
-* **Modelos ORM:** Todos los modelos sincronizados con la migración 0044 en sus paquetes canónicos y exportados mediante shims en `app/models/`. Zero dependencias circulares.
-* **Aislamiento Multitenant & Cuotas:** Enforzamiento estricto de `tenant_id` y validación de cuotas comerciales en servicios.
-
-#### Frontend Web (Angular 21 PWA)
-* **Estructura:** Organizada por roles (`features/superadmin/`, `features/cliente/`, `features/admin/`, `features/cajero/`, `features/encargado/`).
-* **Consolidado:**
-  - CU01, CU02 (Portal Master Superadmin con Downgrade Guard).
-  - CU04 (Administración de sucursales con cuota interactiva).
-  - CU06, CU07, CU08, CU09, CU10 (Catálogo multitenant, modo offline IDB, stock multisede).
-  - CU11 (Gestión de traslados de inventario).
-  - CU12 (Carrito con despacho condicionado a pago Stripe y línea de vida de 5 etapas).
-
-#### Aplicación Móvil (Flutter / Dart)
-* **Estructura:** `mobile/lib/` con arquitectura por capas (core, shared, features).
-* **Consolidado:**
-  - CU08, CU09 (Catálogo offline con SQLite nativo `sqflite`).
-  - CU10 (Consulta de stock multisede con Bottom Sheet interactivo).
-  - CU12 (Selector de entrega vs retiro, Stripe PaymentSheet, diálogo con guía `DSP-...` y tracking stepper ICONIX de 5 etapas). 10/10 tests pasando.
+| Estado | Cantidad de CUs | Casos de Uso Comprendidos |
+| :--- | :---: | :--- |
+| **Implementados y Verificados (100%)** | **10 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10` |
+| **En Curso / Inmediatos (Presentación 2)** | **8 CUs** | `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18` |
+| **Programados (Presentación 3)** | **7 CUs** | `CU19`, `CU20`, `CU21`, `CU22`, `CU23`, `CU24`, `CU25` |
 
 ---
 
-### 3. Próximo Hito
-* **Presentación 2:** CU13 / CU14 (Reservas de stock con vencimiento y resolución de conflictos) o CU16 / CU17 / CU18 (Ventas offline en POS con cola de idempotencia).
+### Detalle de Avance de los 10 Casos de Uso Implementados:
+
+1. **`CU01: Registrar y Gestionar Empresas (Tenants)` [Nuevo 2P - 100%]:**  
+   Backend `p0_saas_plataforma` con aislamiento por `tenant_id`, tabla `companies`, base de datos central y portal Superadmin operativo en `/app/superadmin/tenants`.
+2. **`CU02: Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas` [Nuevo 2P - 100%]:**  
+   Catálogo de 3 planes (Básico máx. 3 sucursales, Profesional máx. 10 sucursales, Empresarial ilimitado), timestamps de auditoría, Downgrade Guard en `/api/saas/subscriptions` y modal reactivo de cambio de plan.
+3. **`CU03: Iniciar Sesión Multitenant con JWT y Claims de Tenant` [Modificado 1P - 100%]:**  
+   Token JWT con inyección obligatoria de `sub`, `rol`, `tenant_id` y `branch_id`. Login desacoplado de dependencias externas en `environment.ts` y selector de 2 actores (`Clientes` vs `Administrativos`).
+4. **`CU04: Gestionar Sucursales Bajo Límites del Plan` [Modificado 1P - 100%]:**  
+   Migración `0040` (geolocalización y auditoría), endpoints `/api/branches/quota`, validación estricta de cuota comercial del plan en backend y UI Angular con widget de progreso reactivo y alertas de capacidad.
+5. **`CU05: Gestionar Prendas y Variantes de Precio por Talla` [Modificado 1P - 100%]:**  
+   CRUD de prendas en `p2_gestion_productos_catalogo`, persistencia transaccional con `db.commit()`, aislamiento por `tenant_id`, matriz de variantes con precios diferenciados por talla para habilitar políticas de cambio. Suite de pruebas pasando 4/4.
+6. **`CU06: Consultar Catálogo Online con Búsqueda Facetada` [Modificado 1P - 100%]:**  
+   Tienda online pública con filtros dinámicos multicriterio (categoría, talla, color, rango de precio) indexados en PostgreSQL.
+7. **`CU07: Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)` [Nuevo 2P - 100%]:**  
+   Endpoint `/api/catalog/offline-pack?branch_id=...`, persistencia IndexedDB nativa en Angular con `IdbCatalogService` (`fashionstore_local_db` v1) y SQLite nativo en Flutter (`local_catalog_db.dart`).
+8. **`CU08: Consultar Catálogo Offline en Modo Desconectado` [Nuevo 2P - 100%]:**  
+   Detección reactiva de conectividad mediante `NetworkStatusService` con conmutación transparente a caché local ante caídas de red y banner de advertencia de datos locales.
+9. **`CU09: Comprar Prendas con Stripe y Despacho Condicionado` [Modificado 1P - 100%]:**  
+   Integración con Stripe Elements en Web y Stripe PaymentSheet en Móvil Flutter. Cumplimiento incondicional de la **Política de Negocio 3**: despacho bloqueado si `payment_status != 'paid'`, generación de código de rastreo formal `DSP-YYYYMMDD-XXXX` y stepper ICONIX de 5 etapas.
+10. **`CU10: Crear Reserva Online de Prendas con Vencimiento y Bloqueo` [Modificado 1P - 100%]:**  
+    Bloqueo atómico de inventario en `p4_gestion_compras_reservas` (`reserved_quantity`), código amigable `RES-XXXXXXXX`, QR digital, validación de fechas (hoy a +7 días), recordatorio de caducidad a 24h y vista boutique en Angular con tickets de reserva.
+
+---
+
+## 2. Estado por Componente Arquitectónico
+
+### Base de Datos (PostgreSQL 15+ / Alembic Head 0044)
+* **Consolidación Definitiva (Migración 0044 Maestro):**
+  - Todas las tablas, relaciones, foreign keys e índices para los 25 Casos de Uso están creados y verificados en PostgreSQL (`0044_complete_database_schema_all_use_cases.py`).
+  - La base de datos relacional está congelada: no se requieren nuevas migraciones DDL estructurales.
+* **Aislamiento Multitenant:** `tenant_id UUID NOT NULL REFERENCES companies(id)` garantizado en todas las entidades de dominio.
+
+### Backend (Python + FastAPI)
+* Organizado en 7 paquetes canónicos de arquitectura profunda:
+  - `p0_saas_plataforma`: Tenants, suscripciones, cuotas comerciales y auditoría.
+  - `p1_gestion_usuarios_acceso`: Usuarios, autenticación JWT, sucursales y proveedores.
+  - `p2_gestion_productos_catalogo`: Prendas, variantes de precio por talla, colores y categorías.
+  - `p3_gestion_inventario_disponibilidad`: Inventario multisede, pack offline y disponibilidad.
+  - `p4_gestion_compras_reservas`: Carrito, órdenes Stripe, despacho y reservas con vencimiento.
+  - `p5_gestion_ventas_pos`: Ventas offline con UUIDv4, outbox, batch sync idempotente, cambios y devoluciones.
+  - `p6_inteligencia_analitica`: Gemini RAG voz/texto, modelos ML (Supervisado / K-Means) y OpenStreetMap.
+
+### Frontend Web (Angular 21 PWA)
+* Desacoplado de servidores externos mediante `runtime-config.js` y detección de localhost en `environment.ts`.
+* Almacenamiento local estructurado en IndexedDB (`fashionstore_local_db`).
+* Componentes reactivos, Spartan UI, diseño de alta costura (`frontend-design`) y accesibilidad.
+
+### Aplicación Móvil (Flutter / Dart)
+* Persistencia local con SQLite embebido (`sqflite`).
+* Geolocalización lista para OpenStreetMap (`flutter_map` + OpenRouteService).
+* Pasarela Stripe integrada mediante `flutter_stripe`.
+
+---
+
+## 3. Próxima Tarea Inmediata (Presentación 2)
+* **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite).**
+* **`CU13` / `CU14` / `CU15` – Bloque de Ventas Offline en POS (Efectivo, UUIDv4, Outbox y Batch Sync Idempotente).**

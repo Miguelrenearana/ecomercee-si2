@@ -1,75 +1,80 @@
 # FASES DE IMPLEMENTACIÓN Y CHECKLIST OFICIAL — FASHIONSTORE
-
-Documento oficial de control de avance de los **28 Casos de Uso** organizados por presentación acumulativa según la metodología ICONIX.
-
----
-
-## 🎯 Presentación 1: Domingo 25/10/2026 (Meta: 10 Casos de Uso)
-**Objetivo Técnico:** Base de la Plataforma SaaS Multitenant, Planes, Aislamiento de Datos y Catálogo Offline (IndexedDB / SQLite).
-
-- [x] **CU01 – Gestionar Empresas Contratantes (Tenants)** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Superadmin da de alta una empresa cliente con Razón Social, NIT y Administrador inicial.
-- [x] **CU02 – Gestionar Planes de Suscripción y Límites Comerciales** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Planes Básico (máx. 2 sucursales) y Profesional (máx. 10 sucursales) configurables.
-- [x] **CU03 – Autenticar Usuario en Contexto Multitenant** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* Token JWT inyecta obligatoriamente `tenant_id`, `role` y `branch_id`.
-- [x] **CU04 – Gestionar Sucursales bajo Reglas de Suscripción** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* El backend rechaza la creación de una 3ra sucursal si la empresa tiene Plan Básico.
-- [x] **CU05 – Consultar y Actualizar Perfil de Usuario** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* Edición de datos del cliente/empleado aislada por tenant.
-- [x] **CU06 – Gestionar Catálogo de Productos y Variantes por Tenant** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* CRUD de prendas y variantes (talla, color, precio diferenciado) restringido a la empresa.
-- [x] **CU07 – Consultar y Filtrar Catálogo en Línea** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* Búsqueda multicriterio de prendas de la marca activa.
-- [x] **CU08 – Descargar y Almacenar Catálogo en Caché Local (IDB/SQLite)** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Descarga de catálogo a IndexedDB (web) y SQLite (móvil).
-- [x] **CU09 – Consultar Catálogo y Disponibilidad Local en Modo Offline** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Navegación y búsqueda de prendas sin internet con advertencia visual de datos locales.
-- [x] **CU10 – Consultar Disponibilidad de Prendas por Sucursal** [1er Parcial - MODIFICADO]
-  - *Criterio de éxito:* Stock físico y reservado visible por sucursal en tiempo real.
+### Plataforma SaaS Multitenant E-Commerce (Sistemas 2 - 2026)
+**Metodología:** ICONIX Process (UML 2.5+)  
+**Alcance Oficial:** 25 Casos de Uso Definitivos (Acordados tras poda estratégica y directrices de cátedra)
 
 ---
 
-## 🎯 Presentación 2: Domingo 01/11/2026 (Meta: 21 Casos de Uso Acumulados)
-**Objetivo Técnico:** Ventas Offline, Cola de Sincronización, Idempotencia, Stripe, Devoluciones, Cambios de Prenda y Mapas.
+## 🎯 Presentación 1: Domingo 25/10/2026 (Alcance: 8 Casos de Uso)
+**Objetivo Técnico:** Base de la Plataforma SaaS Multitenant, Planes y Cuotas, Aislamiento de Datos por `tenant_id` y Catálogo Offline (IndexedDB / SQLite).
 
-> **Consolidación Definitiva de Base de Datos:** La migración maestra `0044` completó y congeló todas las tablas, columnas, relaciones e índices para los 28 Casos de Uso del sistema en PostgreSQL (`alembic upgrade head`).
-
-- [x] **CU11 – Registrar Movimiento de Inventario y Traspasos** [1er Parcial - MODIFICADO - 100% Implementado (Backend y Frontend Web)]
-- [x] **CU12 – Gestionar Carrito y Compra Digital con Pasarela Stripe y Despacho Condicionado** [1er Parcial - MODIFICADO - 100% Implementado (Backend, BD, Frontend Web y Mobile Flutter)]
-  - *Regla de negocio:* El envío/entrega solo se autoriza con pago confirmado en Stripe (Política 3).
-- [/] **CU13 – Registrar Reserva de Prendas (Online y Offline)** [2do Parcial - NUEVO - Backend y Frontend Web 100% Implementados; Mobile Pendiente]
-- [ ] **CU14 – Atender Reserva y Resolver Conflictos de Stock** [1er Parcial - MODIFICADO]
-- [ ] **CU15 – Registrar Venta Presencial en Caja POS (Online)** [1er Parcial - MODIFICADO]
-- [ ] **CU16 – Registrar Venta de Contado en Modo Offline** [2do Parcial - NUEVO]
-  - *Regla de negocio:* Pago de contado (efectivo), generación de UUIDv4 local y rebaja preventiva de stock.
-- [ ] **CU17 – Consultar Bandeja de Operaciones Locales Pendientes** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Lista persistente que sobrevive al cierre y reinicio de la aplicación.
-- [ ] **CU18 – Sincronizar Operaciones Comerciales Locales con Idempotencia** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Transmisión en lote al volver la red; reintentos no duplican ventas ni inventario.
-- [ ] **CU19 – Gestionar Cambios de Prendas con Diferencia de Precio** [2do Parcial - EXTRA]
-  - *Regla de negocio:* El cambio SOLO se consolida si el cliente abona la diferencia de precio (ej. M a Bs 50 por L a Bs 70).
-- [ ] **CU20 – Gestionar Devoluciones de Prendas y Reembolso (50%-80%)** [2do Parcial - NUEVO]
-  - *Regla de negocio:* Retención de 20%-50% por acondicionamiento; reintegro de 50%-80% en nota de crédito o efectivo.
-- [ ] **CU21 – Visualizar Ubicación de Sucursales con OpenStreetMap en Móvil** [2do Parcial - EXTRA]
-  - *Criterio de éxito:* Mapa interactivo en Flutter con OpenStreetMap y cálculo de rutas con OpenRouteService.
+- [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p0_saas_plataforma`, base de datos y portal Superadmin `/app/superadmin/tenants`).
+- [x] **`CU02` – Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Planes Básico con 3 sucursales, Profesional con 10 y Empresarial; Downgrade Guard en `/api/saas/subscriptions`).
+- [x] **`CU03` – Iniciar Sesión Multitenant con JWT y Claims de Tenant** [Modificado 1P]
+  - *Estado:* 100% Implementado (Token JWT firmado inyectando `sub`, `rol`, `tenant_id` y `branch_id`).
+- [x] **`CU04` – Gestionar Sucursales Bajo Límites del Plan** [Modificado 1P]
+  - *Estado:* 100% Implementado (Validación estricta de cuotas en backend y widget reactivo con geolocalización en `/app/admin/branch`).
+- [x] **`CU05` – Gestionar Prendas y Variantes de Precio por Talla** [Modificado 1P]
+  - *Estado:* 100% Implementado (CRUD de prendas, matriz de variantes con precios diferenciados por talla en `p2_gestion_productos_catalogo`).
+- [x] **`CU06` – Consultar Catálogo Online con Búsqueda Facetada** [Modificado 1P]
+  - *Estado:* 100% Implementado (Filtros facetados multicriterio por categoría, talla y color en tienda pública).
+- [x] **`CU07` – Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Endpoint `/api/catalog/offline-pack`, persistencia IndexedDB nativa en Angular y SQLite en Flutter).
+- [x] **`CU08` – Consultar Catálogo Offline en Modo Desconectado** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Detección reactiva de red con `NetworkStatusService` y consulta transparente de catálogo en caché local).
 
 ---
 
-## 🎯 Presentación 3: Domingo 08/11/2026 (Meta: 28 Casos de Uso TOTALES)
-**Objetivo Técnico:** Inteligencia Artificial Generativa (Texto y Voz), Machine Learning (Supervisado/No Supervisado), Realidad Aumentada y Dashboard Ejecutivo.
+## 🎯 Presentación 2: Domingo 01/11/2026 (Alcance Acumulado: 18 Casos de Uso)
+**Objetivo Técnico:** Compras Digitales Stripe, Reservas con Expiración (Online y Offline), Ventas Desconectadas, Sincronización Idempotente, Resolución de Conflictos y Políticas de Cambio/Devolución.
 
-- [ ] **CU22 – Usar Vestidor Virtual mediante Realidad Aumentada** [1er Parcial - PRESERVADO]
-- [ ] **CU23 – Solicitar Reportes Generativos en Lenguaje Natural (Texto y Voz)** [2do Parcial - NUEVO]
-  - *Criterio de éxito:* Dictado por voz (Web Speech API) y generación de reportes con Gemini sobre datos reales del tenant.
-- [ ] **CU24 – Presentar y Exportar Reportes Dinámicos (PDF / Excel)** [2do Parcial - NUEVO]
-- [ ] **CU25 – Gestionar Preparación de Datos Sintéticos para Machine Learning** [2do Parcial - NUEVO]
-- [ ] **CU26 – Entrenar y Evaluar Modelo Predictivo de Demanda (Supervisado)** [2do Parcial - NUEVO]
-- [ ] **CU27 – Analizar Segmentos de Clientes y Anomalías (K-Means)** [2do Parcial - NUEVO]
-- [ ] **CU28 – Consultar Cuadro de Mando y Dashboard Analítico Ejecutivo** [1er Parcial - MODIFICADO]
+> **Consolidación Definitiva de Base de Datos:** La migración maestra `0044` completó y congeló todas las tablas, columnas, relaciones e índices para los 25 Casos de Uso en PostgreSQL (`alembic upgrade head`).
+
+- [x] **`CU09` – Comprar Prendas con Stripe y Despacho Condicionado** [Modificado 1P]
+  - *Estado:* 100% Implementado (Backend `p4`, Frontend Web y Mobile Flutter; cumplimiento estricto de Política 3 de despacho con tracking `DSP-...`).
+- [x] **`CU10` – Crear Reserva Online de Prendas con Vencimiento y Bloqueo** [Modificado 1P]
+  - *Estado:* 100% Implementado (Backend `p4` con bloqueo atómico `reserved_quantity`, código `RES-XXXXXXXX`, QR y vista boutique en Angular).
+- [ ] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** [Nuevo 2P]
+  - *Criterio de éxito:* Apartado desconectado guardado en almacén local `pending_reservations` con UUIDv4 esperando conectividad.
+- [ ] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** [Nuevo 2P]
+  - *Criterio de éxito:* Proceso de liberación automática de stock tras 24h-48h y resolución administrativa de discrepancias en mostrador.
+- [ ] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]
+  - *Criterio de éxito:* Cobro forzado exclusivamente en EFECTIVO (Política 5), emisión de ticket de contingencia con UUIDv4 y rebaja local en caché.
+- [ ] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** [Nuevo 2P]
+  - *Criterio de éxito:* Vista outbox con listado de tickets en estado `PENDIENTE_SYNC`, badge ámbar y botón para forzar sincronización.
+- [ ] **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`)** [Nuevo 2P]
+  - *Criterio de éxito:* Endpoint `/api/sales/offline/batch-sync`; verificación contra `sync_operations` para evitar duplicar ventas o descontar stock dos veces.
+- [ ] **`CU16` – Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock** [Nuevo 2P]
+  - *Criterio de éxito:* Detección de ventas offline con stock central agotado; pantalla para que el Encargado resuelva (stock negativo, sustituto o nota de crédito).
+- [ ] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** [Nuevo 2P]
+  - *Criterio de éxito:* Cumplimiento de la Política 1 (abono obligatorio de diferencia $\Delta$) e inspección de etiqueta textil intacta (rechazo si está usada).
+- [ ] **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** [Nuevo 2P]
+  - *Criterio de éxito:* Cumplimiento de la Política 2 (retención 20%-50%, reembolso neto 50%-80%) y emisión de Nota de Crédito digital (`NC-YYYYMMDD-XXXX`).
+
+---
+
+## 🎯 Presentación 3: Domingo 08/11/2026 (Alcance Acumulado: 25 Casos de Uso TOTALES)
+**Objetivo Técnico:** Geolocalización Móvil (OpenStreetMap), IA Generativa con Voz (Gemini RAG), Pipeline de Machine Learning (Supervisado/No Supervisado) y Dashboard Analítico.
+
+- [ ] **`CU19` – Localizar Sucursales y Trazar Rutas (OpenStreetMap / ORS)** [Nuevo 2P]
+  - *Criterio de éxito:* Mapa interactivo en Flutter con `flutter_map` y cálculo de rutas a pie/vehículo con OpenRouteService.
+- [ ] **`CU20` – Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG)** [Nuevo 2P]
+  - *Criterio de éxito:* Consulta gerencial mediante micrófono, contextualización RAG multitenant con Gemini y respuesta hablada (TTS) + gráficos.
+- [ ] **`CU21` – Exportar Reportes Empresariales a Formatos PDF y Excel** [Modificado 1P]
+  - *Criterio de éxito:* Descarga dinámica de balances contables, inventario y ventas en archivos PDF con membrete y planillas Excel (.xlsx).
+- [ ] **`CU22` – Generar Dataset Sintético de Ventas y Estacionalidad** [Nuevo 2P]
+  - *Criterio de éxito:* Generador estocástico Python (`numpy`/`pandas`) de 10,000+ transacciones simuladas con estacionalidad de moda textil.
+- [ ] **`CU23` – Predecir Demanda de Ropa (ML Supervisado)** [Nuevo 2P]
+  - *Criterio de éxito:* Modelo de regresión Scikit-Learn (`RandomForestRegressor`) para estimar demanda por talla a 4 semanas ($R^2 \ge 0.82$).
+- [ ] **`CU24` – Segmentar Clientes con K-Means (ML No Supervisado)** [Nuevo 2P]
+  - *Criterio de éxito:* Algoritmo K-Means con 3-4 clusters automáticos según métricas RFM (Recencia, Frecuencia, Monto) y tasa de devoluciones.
+- [ ] **`CU25` – Visualizar Dashboard Ejecutivo con KPIs y Métricas ML** [Modificado 1P]
+  - *Criterio de éxito:* Tablero de comando en tiempo real con tarjetas métricas, gráficas interactivas y proyecciones de analítica predictiva.
 
 ---
 
 ## 🏆 Defensa Final: Martes 10 de Noviembre de 2026 (07:00 AM)
-- [ ] Verificación integral de los 28 Casos de Uso en ambiente productivo en la nube.
-- [ ] Coherencia documental 100% entre modelos UML (ICONIX), base de datos y código fuente.
+- [ ] Verificación integral de los **25 Casos de Uso** funcionando de extremo a extremo en ambiente productivo accesible en la nube.
+- [ ] Coherencia documental al 100% entre modelos UML (ICONIX), esquemas de base de datos relacional y código fuente.

@@ -129,3 +129,19 @@
   - Trazabilidad y contingencia offline: Columnas `client_sale_id UUID UNIQUE`, `is_offline BOOLEAN`, `synced_at`, `idempotency_key` en `sales`; `resolved_at`, `resolved_by`, `resolution_note` en `reservations`.
   - Creación de modelos canónicos en paquetes de dominio (`p4`, `p5`, `p6`) con shims de compatibilidad en `app/models/` y verificación de introspección ORM al 100%.
   - Matriz completa de correspondencia Casos de Uso vs Tablas documentada en [`docs/ACTORS_AND_USE_CASES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ACTORS_AND_USE_CASES.md) (Sección 3).
+
+
+### Registro 15: 2026-10-31 — Poda Estratégica, Reestructuración a 25 Casos de Uso y Ajuste de Cuotas Comerciales
+* **Decisión:** 
+  1. Reducir y depurar el alcance oficial de 28 a **25 Casos de Uso definitivos**, eliminando redundancias estrictas del 1er parcial que ya están implementadas y no reciben cambios en el 2P (Perfil de Usuario, Traslados de Mercadería, Probador Virtual AR, Consulta de Stock básica y POS Online clásico).
+  2. Incorporar formalmente los requerimientos del pliego y directrices de cátedra:
+     - `CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)`.
+     - `CU16: Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock`.
+  3. Renumerar correlativamente de `CU01` a `CU25` sin saltos numéricos, manteniendo la trazabilidad con los 7 paquetes de dominio (`p0_saas_plataforma` a `p6_inteligencia_analitica`).
+  4. Ampliar los planes de suscripción SaaS a 3 niveles: **Plan BÁSICO (hasta 3 sucursales activas)**, **Plan PROFESIONAL (hasta 10 sucursales con IA)** y **Plan EMPRESARIAL (ilimitadas con backup en tiempo real)**.
+  5. Formalizar las políticas comerciales para los tenants de prueba (Boutique Elegance: 30% retención, 15 días; Moda Urbana: 20% retención, 30 días) y los mecanismos de consentimiento de Términos y Condiciones mediante checkboxes obligatorios en Frontend.
+* **Motivo:** Cumplir las directrices académicas impartidas en clase por la docente, enfocar el esfuerzo en los 6 Desafíos de alto valor del 2do parcial y dotar al proyecto de consistencia arquitectónica y documental intachable.
+* **Impacto:**
+  - Actualización de `docs/ACTORS_AND_USE_CASES.md`, `docs/BUSINESS_POLICIES.md`, `docs/ai/IMPLEMENTATION_PHASES.md` y `docs/ai/CURRENT_STATE.md`.
+  - Cero roturas en la base de datos (la migración `0044` ya contiene todas las tablas necesarias).
+  - Trazabilidad del 100% de los Requisitos Funcionales y No Funcionales.

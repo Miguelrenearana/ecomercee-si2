@@ -26,15 +26,16 @@ def seed_saas_data():
             basic_plan = Plan(
                 name="BASICO",
                 code="basic",
-                max_branches=2,
+                max_branches=3,
                 has_ai_access=False,
                 price_monthly=Decimal("29.00"),
                 is_active=True,
             )
             db.add(basic_plan)
-            print("   -> Creado Plan BASICO (max 2 sucursales, sin IA)")
+            print("   -> Creado Plan BASICO (max 3 sucursales, sin IA)")
         else:
-            print("   -> Plan BASICO ya existe")
+            basic_plan.max_branches = 3
+            print("   -> Plan BASICO actualizado (max 3 sucursales)")
 
         pro_plan = db.query(Plan).filter(Plan.code == "pro").first()
         if not pro_plan:
@@ -51,9 +52,25 @@ def seed_saas_data():
         else:
             print("   -> Plan PROFESIONAL ya existe")
 
+        enterprise_plan = db.query(Plan).filter(Plan.code == "enterprise").first()
+        if not enterprise_plan:
+            enterprise_plan = Plan(
+                name="EMPRESARIAL",
+                code="enterprise",
+                max_branches=25,
+                has_ai_access=True,
+                price_monthly=Decimal("199.00"),
+                is_active=True,
+            )
+            db.add(enterprise_plan)
+            print("   -> Creado Plan EMPRESARIAL (max 25 sucursales, con IA y backup continuo)")
+        else:
+            print("   -> Plan EMPRESARIAL ya existe")
+
         db.commit()
         db.refresh(basic_plan)
         db.refresh(pro_plan)
+        db.refresh(enterprise_plan)
 
         print("\n[2/4] Sembrando Cuenta de Superadministrador Global...")
         superadmin_email = "superadmin@fashionstore.com"

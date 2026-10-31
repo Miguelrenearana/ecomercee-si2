@@ -12,27 +12,35 @@ router = APIRouter(prefix="/saas/plans", tags=["SaaS Plans"])
 @router.get("", summary="Listar planes comerciales disponibles")
 def list_plans(db: Session = Depends(get_db)):
     plans = db.query(Plan).filter(Plan.is_active.is_(True)).order_by(Plan.price_monthly.asc()).all()
-    # Si la base de datos no tiene planes aún, sembramos los dos oficiales de cátedra
+    # Si la base de datos no tiene planes aun, sembramos los tres oficiales de catedra
     if not plans:
         basic = Plan(
             name="BASICO",
             code="basic",
-            description="Plan esencial para boutiques individuales. Incluye hasta 2 sucursales activas y gestión estándar de inventario y ventas POS.",
-            max_branches=2,
+            description="Plan esencial para boutiques individuales. Incluye hasta 3 sucursales activas y gestion estandar de inventario y ventas POS.",
+            max_branches=3,
             has_ai_access=False,
             price_monthly=29.00,
         )
         pro = Plan(
             name="PROFESIONAL",
             code="pro",
-            description="Plan avanzado para marcas en expansión. Incluye hasta 10 sucursales activas, analítica predictiva y asistente de voz con Gemini IA.",
+            description="Plan avanzado para marcas en expansion. Incluye hasta 10 sucursales activas, analitica predictiva y asistente de voz con Gemini IA.",
             max_branches=10,
             has_ai_access=True,
             price_monthly=99.00,
         )
-        db.add_all([basic, pro])
+        enterprise = Plan(
+            name="EMPRESARIAL",
+            code="enterprise",
+            description="Plan corporativo para grandes cadenas. Incluye hasta 25 sucursales activas, analitica predictiva avanzada, Gemini IA y copias de seguridad continuas.",
+            max_branches=25,
+            has_ai_access=True,
+            price_monthly=199.00,
+        )
+        db.add_all([basic, pro, enterprise])
         db.commit()
-        plans = [basic, pro]
+        plans = [basic, pro, enterprise]
 
     data = [PlanRead.model_validate(p).model_dump() for p in plans]
     return response(
@@ -48,7 +56,7 @@ def create_plan(plan_in: PlanCreate, db: Session = Depends(get_db)):
     if existing:
         return response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"El plan con código '{plan_in.code}' ya existe",
+            message=f"El plan con codigo '{plan_in.code}' ya existe",
             data=None,
         )
 

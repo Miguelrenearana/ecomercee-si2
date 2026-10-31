@@ -1,57 +1,62 @@
 # NEXT STEPS — FASHIONSTORE SAAS MULTITENANT
-
-## Tareas de Implementación (Presentación 2)
-
-### Hito 1: Núcleo SaaS Multitenant, Planes y Catálogo (CU01 a CU07 COMPLETADOS)
-- [x] Portal Superadmin con alta de empresas y Downgrade Guard en planes.
-- [x] Autenticación JWT con inyección obligatoria de `tenant_id`, `rol`, `branch_id`.
-- [x] Gestión de sucursales bloqueando el límite del plan (2 vs 10) con widget reactivo en Angular 21.
-- [x] Endpoints `/api/users/me` para consulta y edición de perfil.
-- [x] Catálogo de prendas y variantes multitenant con aislamiento por `tenant_id`.
+### Hoja de Ruta Operativa y Próximos Pasos (25 Casos de Uso Oficiales)
+**Fecha:** 31 de Octubre de 2026
 
 ---
 
-### Hito 2: Consulta de Disponibilidad y Modo Offline (CU08, CU09, CU10 COMPLETADOS)
-- [x] Disponibilidad multisede en backend (`/api/catalog/availability`), modal en Angular 21 y Bottom Sheet en Flutter.
-- [x] Motor IndexedDB en PWA (`fashionstore_local_db`) y SQLite nativo en Flutter (`local_catalog_db.dart`).
-- [x] Resiliencia ante caídas de red y toggle de simulación offline.
+## 🎯 Estado de Situación: 10 de 25 Casos de Uso Implementados (100% Verificados)
+
+### Casos de Uso Listos y Funcionales:
+- [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** (`p0_saas_plataforma`)
+- [x] **`CU02` – Gestionar Planes de Suscripción (Básico a 3 suc., Pro a 10 suc., Empresarial) y Cuotas** (`p0_saas_plataforma`)
+- [x] **`CU03` – Iniciar Sesión Multitenant con JWT y Claims de Tenant** (`p1_gestion_usuarios_acceso`)
+- [x] **`CU04` – Gestionar Sucursales Bajo Límites del Plan** (`p1_gestion_usuarios_acceso`)
+- [x] **`CU05` – Gestionar Prendas y Variantes de Precio por Talla** (`p2_gestion_productos_catalogo`)
+- [x] **`CU06` – Consultar Catálogo Online con Búsqueda Facetada** (`p2_gestion_productos_catalogo`)
+- [x] **`CU07` – Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)** (`p3_gestion_inventario_disponibilidad`)
+- [x] **`CU08` – Consultar Catálogo Offline en Modo Desconectado** (`p3_gestion_inventario_disponibilidad`)
+- [x] **`CU09` – Comprar Prendas con Stripe y Despacho Condicionado** (`p4_gestion_compras_reservas`)
+- [x] **`CU10` – Crear Reserva Online de Prendas con Vencimiento y Bloqueo** (`p4_gestion_compras_reservas`)
 
 ---
 
-### Hito 3: Traslados y Compra con Stripe (CU11 y CU12 COMPLETADOS FULLSTACK)
-- [x] **CU11:** Traslados entre sucursales con ciclo `EN_TRANSITO` -> `COMPLETADO` / `CANCELADO` en Backend y Web (`transfers-page`).
-- [x] **CU12:** Compra con Stripe y despacho condicionado (Política 3) en Backend, Frontend Web y Mobile Flutter. Línea de vida ICONIX de 5 etapas.
+## 🚀 Tareas Inmediatas de Implementación (Presentación 2)
+
+### Bloque A: Reservas Offline y Resolución de Expiraciones (`CU11` y `CU12`)
+1. **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite):**
+   - [ ] Conectar la bandeja de reservas offline de `idb-reservations.service.ts` en Angular con el detector de red.
+   - [ ] Implementar la persistencia SQLite en Flutter para apartado desconectado.
+2. **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas:**
+   - [ ] Tarea periódica de expiración (`order_service.py` / `expire_daily.py`), endpoints de resolución `/api/reservations/{id}/resolve`.
+   - [ ] Frontend Web: Panel de Encargado de Sucursal para liberar prendas no retiradas a stock general.
 
 ---
 
-### Hito 4: Consolidación Definitiva de Base de Datos para Todos los CUs (COMPLETADO)
-- [x] **Migración Maestra 0044 (`0044_complete_database_schema_all_use_cases.py`):**
-  - [x] `tenant_id` y claves foráneas añadidas a todas las tablas restantes (`reservations`, `sales`, `conversations`, etc.).
-  - [x] Tablas de políticas de negocio creadas: `garment_exchanges` (CU19) y `garment_returns` (CU20).
-  - [x] Tabla de sincronización idempotente creada: `sync_operations` (CU18).
-  - [x] Tablas de Inteligencia Artificial y Machine Learning creadas: `ml_models`, `demand_forecasts` (CU26), `customer_segments` (CU27).
-  - [x] Columnas de auditoría y contingencia offline: `client_sale_id`, `is_offline`, `synced_at` en `sales`; `resolved_at`, `resolved_by`, `resolution_note` en `reservations`.
-- [x] **Modelos ORM & Shims:** Modelos SQLAlchemy implementados en paquetes de dominio y re-exportados en `app/models/` sin dependencias circulares.
-- [x] **Matriz de Trazabilidad:** Integrada en [`docs/ACTORS_AND_USE_CASES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ACTORS_AND_USE_CASES.md) (Sección 3).
-- [x] **Base de datos congelada:** Cero migraciones DDL adicionales necesarias.
+### Bloque B: Suite POS Offline, Sincronización Idempotente y Conflictos (`CU13` al `CU16`)
+1. **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4:**
+   - [ ] Frontend PWA (`/app/cajero/caja`): Bloqueo estricto a forma de pago EFECTIVO (Política 5).
+   - [ ] Generación de UUIDv4 local, rebaja inmediata en stock IndexedDB/SQLite y ticket de contingencia.
+2. **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite):**
+   - [ ] Pestaña Outbox en caja con lista de ventas locales `PENDIENTE_SYNC` y badge dinámico ámbar.
+3. **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`):**
+   - [ ] Endpoint backend `POST /api/sales/offline/batch-sync` validando contra tabla `sync_operations`.
+   - [ ] Prevención de doble inserción de ventas y doble descuento de inventario ante reintentos de red.
+4. **`CU16` – Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock:**
+   - [ ] Detección en backend de ventas offline sincronizadas con stock central insuficiente (sobreventa).
+   - [ ] Pantalla en panel de Encargado para resolver: autorizar con stock negativo, sustituir prenda o emitir Nota de Crédito.
 
 ---
 
-### Hito 5: Próximos Casos de Uso a Implementar (Presentación 2)
+### Bloque C: Políticas Comerciales de Cambio y Devolución (`CU17` y `CU18`)
+1. **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado:**
+   - [ ] Endpoint `POST /api/sales/exchanges` validando Política 1 (abono estricto de diferencia $\Delta$).
+   - [ ] Verificación física en caja: casilla de etiqueta textil y estado no desgastado (rechazo si no cumple).
+2. **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito:**
+   - [ ] Endpoint `POST /api/sales/returns` aplicando retención del 20% al 50% según la política del tenant.
+   - [ ] Emisión de Nota de Crédito Digital (`NC-YYYYMMDD-XXXX`) o reembolso en efectivo.
 
-#### Prioridad Inmediata A: Reservas de Prendas en Tienda Física (CU13 y CU14)
-1. **CU13: Crear Reserva de Prendas con Vencimiento:**
-   - [x] Backend: Lógica en `reservation_service.py` (`POST /api/reservations`), incremento de `reserved_quantity` en `inventory`, validación de fechas (hoy a 7 días), temporizador de expiración (`expires_at = visit_date + 24h`), aislamiento `tenant_id`, códigos QR/amigables y suite de tests (7/7 PASSED).
-   - [x] Frontend Web: Rediseño estético (/frontend-design & /design-taste-frontend), sidebar con branding FashionStore, tipografía Montserrat Regular (400), favicon y título actualizados, vista de reserva (`reservations-page`), selección de sucursal de visita, pills dinámicas de disponibilidad, dossier flotante con recordatorio de 24h, almacenamiento offline en IndexedDB ([`idb-reservations.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-reservations.service.ts)), modal voucher con código y QR, y vista "Mis Reservas" (`my-reservations-page`) con tickets boutique y sincronización offline masiva.
-   - [ ] Mobile Flutter: Pantalla de reserva de prendas con selector de sucursal, ticket digital con código QR y persistencia SQLite offline.
-2. **CU14: Atender y Resolver Conflictos de Reservas:**
-   - [ ] Backend: Tarea periódica de expiración (`expire_daily.py`), endpoints de resolución `/api/reservations/{id}/resolve`.
-   - [ ] Frontend Web: Panel de encargado de sucursal para liberar prendas no retiradas a stock general.
+---
 
-#### Prioridad Inmediata B: Ventas POS Offline y Sincronización Idempotente (CU16, CU17, CU18)
-1. **CU16: Registrar Venta Offline en Efectivo con UUIDv4:**
-   - [ ] Frontend/Mobile: Generación de UUIDv4 en cliente, registro en almacén local offline (`PENDIENTE_SYNC`).
-2. **CU17: Bandeja Local de Operaciones Pendientes:**
-   - [ ] UI de caja con contador de ventas pendientes de subir y botón de forzar sincronización.
-3. **CU18: Sincronización de Lotes con Idempotencia:**
-   - [ ] Backend: Endpoint `POST /api/sales/offline/batch-sync` contra tabla `sync_operations`. Si el `client_operation_id` ya fue procesado, confirmar sin duplicar venta ni descontar inventario dos veces.
+## 📋 Ajuste Menor Requerido en Base de Datos / Seed:
+- [ ] Actualizar en base de datos la cuota del **Plan BÁSICO** de 2 a **3 sucursales activas** (`UPDATE plans SET max_branches = 3 WHERE code = 'basic'`).
+- [ ] Insertar el **Plan EMPRESARIAL** en `plans` (código `enterprise`, max_branches 25, con IA y backup continuo).
