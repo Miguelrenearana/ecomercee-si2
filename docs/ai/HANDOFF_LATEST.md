@@ -1,12 +1,20 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 01/11/2026 (Consolidación de CU11 Diagrama EA y CU12: Atender y Resolver Conflictos de Reservas Expiradas)
+## Estado de Relevo Operativo al 02/11/2026 (Orquestación con Docker Compose e Infraestructura Local/Cloud)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
 
-1. **Diagrama de Robustez / Comunicación UML de CU11 para Enterprise Architect:**
+1. **Orquestación con Docker Compose (`docker-compose.yml`):**
+   - Creado `docker-compose.yml` en la raíz orquestando 3 servicios:
+     - `db`: PostgreSQL 16 Alpine con healthcheck (`pg_isready`), volumen persistente `postgres_data` y puerto expuesto 5432.
+     - `backend`: FastAPI Python 3.12 con ejecución automática de migraciones Alembic (`alembic upgrade head`) y Uvicorn en el puerto 8000.
+     - `frontend`: Angular 21 PWA con Nginx unprivileged sirviendo estáticos e inyectando `API_BASE_URL` en el puerto 8080.
+   - Creado `.dockerignore` en la raíz para optimizar el contexto de build, excluyendo `node_modules`, `.venv`, datasets de seed, caches e informes.
+   - Actualizado `backend/Dockerfile` para incluir `backend/seed_saas.py` para permitir la siembra de datos de prueba dentro del contenedor.
+
+2. **Diagrama de Robustez / Comunicación UML de CU11 para Enterprise Architect:**
    - Creado [`docsUML/CUrobustez/CU11_comm_reserva_offline_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUrobustez/CU11_comm_reserva_offline_EA.js) en JScript para Enterprise Architect, modelando la secuencia actor-boundary-controller-entity bajo estándares UML 2.5 y la plantilla de diseño de la cátedra:
      - Actor: `:Cliente`
      - Frontera: `:ReservationCreateController`

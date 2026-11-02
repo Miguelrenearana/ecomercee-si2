@@ -200,3 +200,15 @@
     - [`backend/app/packages/p5_gestion_ventas_pos/routes/exchange_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/exchange_routes.py)
   - Montado en [`backend/app/packages/p5_gestion_ventas_pos/router.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/router.py).
   - Suite de integración [`backend/tests/test_cu17_garment_exchange.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu17_garment_exchange.py) con 8/8 pruebas PASSED (100%).
+
+
+### Registro 20: 2026-11-02 — Orquestación de Entorno con Docker Compose y Paridad de Despliegue
+* **Decisión:**
+  1. Crear archivo [`docker-compose.yml`](file:///c:/Users/PERSONAL/ecommerce-SI2/docker-compose.yml) en la raíz para orquestar los 3 servicios fundamentales: PostgreSQL 16 (`db`), FastAPI Uvicorn (`backend`) y Angular Nginx (`frontend`).
+  2. Implementar arranque resiliente con `healthcheck` en PostgreSQL (`pg_isready`) y ejecución automática de migraciones (`alembic upgrade head`) en el contenedor backend previo al inicio de Uvicorn.
+  3. Crear [`.dockerignore`](file:///c:/Users/PERSONAL/ecommerce-SI2/.dockerignore) en la raíz para excluir directorios pesados (`node_modules`, `.angular`, `.venv`, `.git`, datasets de seed e informes), acelerando radicalmente el tiempo de construcción de imágenes.
+  4. Garantizar compatibilidad dual: el desarrollador puede seguir levantando el entorno ligero nativo en dos terminales (`uvicorn` + `npm start`) para bajo consumo de RAM, o levantar el stack completo en Docker para pruebas y staging.
+* **Motivo:** Asegurar paridad y reproducibilidad entre el entorno de desarrollo y los despliegues en la nube (Render / Railway).
+* **Impacto:**
+  - Archivos creados: [`docker-compose.yml`](file:///c:/Users/PERSONAL/ecommerce-SI2/docker-compose.yml) y [`.dockerignore`](file:///c:/Users/PERSONAL/ecommerce-SI2/.dockerignore).
+  - Archivo actualizado: [`backend/Dockerfile`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/Dockerfile).
