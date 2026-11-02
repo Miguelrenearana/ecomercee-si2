@@ -66,3 +66,26 @@ export interface CreateReservationRequest {
 
 export type ReservationResponse = ApiResponse<Reservation>;
 export type ReservationListResponse = ApiResponse<Reservation[]>;
+
+export interface ItemStockAvailability {
+  variant_id: string;
+  product_name: string;
+  variant_sku: string;
+  requested_quantity: number;
+  available_quantity: number;
+  has_sufficient_stock: boolean;
+}
+
+export interface ReservationConflictItem extends Reservation {
+  can_reactivate: boolean;
+  items_stock: ItemStockAvailability[];
+}
+
+export type ConflictResolutionType = 'reactivate' | 'substitute' | 'close';
+
+export interface ReservationConflictResolveRequest {
+  resolution_type: ConflictResolutionType;
+  extended_days?: number;
+  substitute_variant_id?: string | null;
+  notes: string;
+}

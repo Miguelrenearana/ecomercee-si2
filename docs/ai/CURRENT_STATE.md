@@ -9,13 +9,13 @@
 
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
-| **Implementados y Verificados (100%)** | **11 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11` |
-| **En Curso / Inmediatos (Presentación 2)** | **7 CUs** | `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18` |
+| **Implementados y Verificados (100%)** | **13 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU17` |
+| **En Curso / Inmediatos (Presentación 2)** | **5 CUs** | `CU13`, `CU14`, `CU15`, `CU16`, `CU18` |
 | **Programados (Presentación 3)** | **7 CUs** | `CU19`, `CU20`, `CU21`, `CU22`, `CU23`, `CU24`, `CU25` |
 
 ---
 
-### Detalle de Avance de los 10 Casos de Uso Implementados:
+### Detalle de Avance de los Casos de Uso Implementados:
 
 1. **`CU01: Registrar y Gestionar Empresas (Tenants)` [Nuevo 2P - 100%]:**  
    Backend `p0_saas_plataforma` con aislamiento por `tenant_id`, tabla `companies`, base de datos central y portal Superadmin operativo en `/app/superadmin/tenants`.
@@ -39,6 +39,10 @@
     Bloqueo atómico de inventario en `p4_gestion_compras_reservas` (`reserved_quantity`), código amigable `RES-XXXXXXXX`, QR digital, validación de fechas (hoy a +7 días), recordatorio de caducidad a 24h y vista boutique en Angular con tickets de reserva. **Blindado y Automatizado:** Background worker continuo asíncrono en `main.py` (`_expiration_worker_loop`) y endpoint administrativo `POST /api/reservations/sweeper` que auditan reservas vencidas (`expires_at <= today`), liberan de inmediato el stock bloqueado devolviéndolo a disponibilidad general y limpian reservas en carrito abandonado (15 min). Suite `test_cu10_reservation_expiration_sweeper.py` verificada con 4/4 pruebas aprobadas.
 11. **`CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)` [Nuevo 2P - 100%]:**  
     Persistencia desconectada con UUIDv4 local (`client_reservation_id`), bandeja Outbox de reservas offline tanto en PWA Web (`IdbReservationsService` en IndexedDB) como en Mobile Flutter (`local_pending_reservations` en SQLite con `LocalCatalogDb`), sincronización reactiva al reconectar con backend `POST /reservations/` garantizando idempotencia transaccional y validación de stock. Suite de pruebas pasando 7/7 en backend y 8/8 en Flutter.
+12. **`CU12: Atender y Resolver Conflictos de Reservas Expiradas` [Nuevo 2P - 100%]:**  
+    Gestión operativa de discrepancias cuando un cliente asiste tras la expiración del apartado. Backend `p4_gestion_compras_reservas` con endpoints `GET /reservations/branch/conflicts` y `POST /reservations/{id}/resolve-conflict`, validación atómica de inventario físico remanente en percha, reactivación (+24h/48h) con re-bloqueo de `reserved_quantity`, sustitución de prenda/talla disponible o cierre definitivo con nota de auditoría obligatoria. Frontend PWA Angular en `/app/encargado/reservations` con bandeja visual de diagnóstico de percha y modal de resolución adaptativa. Suite `test_cu12_resolve_expired_reservations.py` aprobada 7/7.
+13. **`CU17: Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Validación de Estado` [Nuevo 2P - 100%]:**  
+    Implementación rigurosa de la **Política de Negocio 1 (P-Ten-01)** en `p5_gestion_ventas_pos`. Endpoints `POST /api/exchanges/quote`, `POST /api/exchanges` y `GET /api/exchanges`. Cálculo dinámico de diferencia de precio ($\Delta = P_{\text{nueva}} - P_{\text{original}}$). Si $\Delta > 0$, el cambio se consolida **única y exclusivamente si el cliente abona la diferencia** en caja (`difference_paid = True`); de lo contrario, se rechaza con HTTP 400 y el inventario no se altera. Validación de etiqueta intacta (`good_with_tags`), plazo de cambio (máx. 30 días), actualización física atómica de inventario (+1 vieja, -1 nueva con `with_for_update`) y persistencia en tabla `garment_exchanges`. Suite `test_cu17_garment_exchange.py` con 8/8 pruebas aprobadas (100%).
 
 ---
 

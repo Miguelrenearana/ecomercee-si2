@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.tenant_context import get_tenant_id_from_header
 from app.schemas.enums import RolEnum
 from app.packages.p4_gestion_compras_reservas.schemas.reservation_schema import (
+    ReservationConflictResolveRequest,
     ReservationCreate,
     ReservationDecisionRequest,
 )
@@ -20,8 +21,10 @@ from app.packages.p4_gestion_compras_reservas.services.reservation_service impor
     decide_reservation,
     confirm_reservation_arrival,
     get_reservation,
+    list_branch_conflicts,
     list_reservations,
     list_reservations_by_branch,
+    resolve_reservation_conflict,
     transfer_reservation_to_cart as transfer_reservation_service,
 )
 from app.utils.response import response
@@ -57,6 +60,26 @@ async def list_branch_reservations_route(
 
     reservations = list_reservations_by_branch(db, resolved_branch_id, tenant_id=tenant_id)
     return response(status_code=200, message="Reservas de sucursal obtenidas exitosamente", data=reservations)
+
+
+@router.get("/branch/conflicts")
+async def list_branch_conflicts_route(
+    db: Session = Depends(get_db),
+    tenant_id: UUID | None = Depends(get_tenant_id_from_header),
+    branch_id: UUID | None = Query(default=None),
+    current_branch_id: UUID | None = Depends(get_current_branch_id),
+    current_user: dict = Depends(require_roles(RolEnum.administrador, RolEnum.encargado)),
+):
+    resolved_branch_id = branch_id or current_branch_id
+    if resolved_branch_id is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="branch_id es requerido")
+
+    if current_user.get("rol") != RolEnum.administrador.value and current_branch_id and resolved_branch_id != current_branch_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta sucursal")
+
+    conflicts = list_branch_conflicts(db, resolved_branch_id, tenant_id=tenant_id)
+    return response(status_code=200, message="Conflictos de reservas obtenidos exitosamente", data=conflicts)
+
 
 
 @router.get("/branch/{reservation_id}")
@@ -235,3 +258,33 @@ async def run_reservations_sweeper_route(
         message="Barrido de reservas vencidas ejecutado exitosamente",
         data=sweep_results,
     )
+
+
+@router.post("/{reservation_id}/resolve-conflict")
+async def resolve_reservation_conflict_route(
+    reservation_id: UUID,
+    payload: ReservationConflictResolveRequest,
+    db: Session = Depends(get_db),
+    tenant_id: UUID | None = Depends(get_tenant_id_from_header),
+    branch_id: UUID | None = Query(default=None),
+    current_branch_id: UUID | None = Depends(get_current_branch_id),
+    current_user: dict = Depends(require_roles(RolEnum.administrador, RolEnum.encargado)),
+):
+    resolved_branch_id = branch_id or current_branch_id
+    try:
+        res = resolve_reservation_conflict(
+            db=db,
+            reservation_id=reservation_id,
+            payload=payload,
+            user_id=UUID(current_user["sub"]),
+            tenant_id=tenant_id,
+            branch_id=resolved_branch_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if not res:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Reserva con id {reservation_id} no encontrada")
+
+    return response(status_code=200, message="Conflicto de reserva resuelto exitosamente", data=res)
+

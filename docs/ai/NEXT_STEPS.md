@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 Estado de Situación: 11 de 25 Casos de Uso Implementados (100% Verificados)
+## 🎯 Estado de Situación: 13 de 25 Casos de Uso Implementados (100% Verificados)
 
 ### Casos de Uso Listos y Funcionales:
 - [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** (`p0_saas_plataforma`)
@@ -18,25 +18,18 @@
 - [x] **`CU09` – Comprar Prendas con Stripe y Despacho Condicionado** (`p4_gestion_compras_reservas`)
 - [x] **`CU10` – Crear Reserva Online de Prendas con Vencimiento y Bloqueo** (`p4_gestion_compras_reservas`)
 - [x] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** (`p4_gestion_compras_reservas`)
+- [x] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** (`p4_gestion_compras_reservas`)
+- [x] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** (`p5_gestion_ventas_pos`)
 
 ---
 
 ## 🚀 Tareas Inmediatas de Implementación (Presentación 2)
 
-### Bloque A: Reservas Offline y Resolución de Expiraciones (`CU11` y `CU12`)
-1. **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite):** (Completado)
-   - [x] Conectar la bandeja de reservas offline de `idb-reservations.service.ts` en Angular con el detector de red.
-   - [x] Implementar la persistencia SQLite en Flutter para apartado desconectado y bandeja de salida outbox.
-2. **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas:** (Siguiente Tarea)
-   - [ ] Tarea periódica de expiración (`order_service.py` / `expire_daily.py`), endpoints de resolución `/api/reservations/{id}/resolve`.
-   - [ ] Frontend Web: Panel de Encargado de Sucursal para liberar prendas no retiradas a stock general.
-
----
-
 ### Bloque B: Suite POS Offline, Sincronización Idempotente y Conflictos (`CU13` al `CU16`)
-1. **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4:**
+1. **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4:** (Siguiente Tarea Inmediata)
    - [ ] Frontend PWA (`/app/cajero/caja`): Bloqueo estricto a forma de pago EFECTIVO (Política 5).
    - [ ] Generación de UUIDv4 local, rebaja inmediata en stock IndexedDB/SQLite y ticket de contingencia.
+   - [ ] Mobile POS Flutter: Venta rápida offline con cobro en efectivo.
 2. **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite):**
    - [ ] Pestaña Outbox en caja con lista de ventas locales `PENDIENTE_SYNC` y badge dinámico ámbar.
 3. **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`):**
@@ -49,11 +42,13 @@
 ---
 
 ### Bloque C: Políticas Comerciales de Cambio y Devolución (`CU17` y `CU18`)
-1. **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado:**
-   - [ ] Endpoint `POST /api/sales/exchanges` validando Política 1 (abono estricto de diferencia $\Delta$).
-   - [ ] Verificación física en caja: casilla de etiqueta textil y estado no desgastado (rechazo si no cumple).
+1. **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado:** (Completado)
+   - [x] Endpoints `POST /api/exchanges/quote`, `POST /api/exchanges` y `GET /api/exchanges` validando Política 1 (abono estricto de diferencia $\Delta$).
+   - [x] Verificación física de prenda: casilla de etiqueta textil intacta y prenda no usada (`good_with_tags`).
+   - [x] Actualización transaccional atómica de stock físico (+1 / -1 con `with_for_update`) y persistencia en `garment_exchanges`.
+   - [x] Suite de integración `test_cu17_garment_exchange.py` con 8/8 pruebas aprobadas (100%).
 2. **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito:**
-   - [ ] Endpoint `POST /api/sales/returns` aplicando retención del 20% al 50% según la política del tenant.
+   - [ ] Endpoint `POST /api/returns` aplicando retención del 20% al 50% según la política del tenant.
    - [ ] Emisión de Nota de Crédito Digital (`NC-YYYYMMDD-XXXX`) o reembolso en efectivo.
 
 ---

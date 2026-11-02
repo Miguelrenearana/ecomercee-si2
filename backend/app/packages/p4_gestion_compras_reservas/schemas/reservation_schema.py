@@ -87,3 +87,48 @@ class ReservationRead(BaseModel):
     items: list[ReservationItemRead] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class ConflictResolutionType(str, Enum):
+    reactivate = "reactivate"
+    substitute = "substitute"
+    close = "close"
+
+
+class ReservationConflictResolveRequest(BaseModel):
+    resolution_type: ConflictResolutionType
+    extended_days: int = Field(default=1, ge=1, le=7, description="Días adicionales para reactivar")
+    substitute_variant_id: UUID | None = Field(default=None, description="Nueva variante si se acuerda sustitución de prenda")
+    notes: str = Field(min_length=3, max_length=500, description="Justificación o acuerdo con el cliente en mostrador")
+
+
+class ItemStockAvailability(BaseModel):
+    variant_id: UUID
+    product_name: str
+    variant_sku: str
+    requested_quantity: int
+    available_quantity: int
+    has_sufficient_stock: bool
+
+
+class ReservationConflictItemRead(BaseModel):
+    id: UUID
+    reservation_code: str
+    user_id: UUID
+    user_name: str
+    branch_id: UUID
+    branch_name: str
+    visit_date: date
+    expires_at: date
+    status: ReservationStatusEnum
+    total_amount: Decimal
+    item_count: int
+    resolved_at: datetime | None = None
+    resolved_by: UUID | None = None
+    resolution_note: str | None = None
+    can_reactivate: bool
+    items_stock: list[ItemStockAvailability] = Field(default_factory=list)
+    items: list[ReservationItemRead] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+

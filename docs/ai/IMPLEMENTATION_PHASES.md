@@ -38,8 +38,8 @@
   - *Estado:* 100% Implementado (Backend `p4` con bloqueo atómico `reserved_quantity`, código `RES-XXXXXXXX`, QR y vista boutique en Angular).
 - [x] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** [Nuevo 2P]
   - *Estado:* 100% Implementado (Backend `p4` con `client_reservation_id` e idempotencia, PWA Angular con `IdbReservationsService` y Outbox offline, Flutter con `LocalCatalogDb` tabla SQLite `local_pending_reservations`, tray de reservas pendientes y sincronización).
-- [ ] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** [Nuevo 2P]
-  - *Criterio de éxito:* Proceso de liberación automática de stock tras 24h-48h y resolución administrativa de discrepancias en mostrador.
+- [x] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p4` con endpoints `/reservations/branch/conflicts` y `/resolve-conflict`, validación de inventario en percha, reactivación con re-bloqueo +24h/48h, sustitución de variante, anulación con nota de auditoría, frontend PWA en `/app/encargado/reservations` con bandeja de conflictos reactiva y modal de resolución, suite de 7/7 pruebas unitarias pasando).
 - [ ] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]
   - *Criterio de éxito:* Cobro forzado exclusivamente en EFECTIVO (Política 5), emisión de ticket de contingencia con UUIDv4 y rebaja local en caché.
 - [ ] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** [Nuevo 2P]

@@ -167,3 +167,36 @@
 * **Impacto:**
   - Archivos actualizados: [`backend/app/packages/p4_gestion_compras_reservas/services/expiration_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/services/expiration_service.py), [`backend/app/packages/p4_gestion_compras_reservas/services/reservation_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/services/reservation_service.py), [`backend/app/packages/p4_gestion_compras_reservas/routes/reservation_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/routes/reservation_routes.py), [`backend/main.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/main.py).
   - Suite de pruebas de integración [`backend/tests/test_cu10_reservation_expiration_sweeper.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu10_reservation_expiration_sweeper.py) con 4/4 pruebas PASSED.
+
+### Registro 18: 2026-11-01 — Protocolo de Resolución de Conflictos para Reservas Expiradas (CU12)
+* **Decisión:**
+  1. Implementar la API y la lógica de negocio de resolución de discrepancias en `p4_gestion_compras_reservas` (`GET /reservations/branch/conflicts` y `POST /reservations/{id}/resolve-conflict`) con 3 estrategias explícitas:
+     - `reactivate`: Extiende la vigencia (+24h a +72h) y re-bloquea las unidades requeridas en `reserved_quantity`, condicionado a que el inventario remanente en percha (`quantity - reserved_quantity >= requested`) sea suficiente.
+     - `substitute`: Reasigna la reserva a otra variante disponible (ej. cambio de talla M por L o modelo análogo), liberando la reserva previa y bloqueando la nueva variante.
+     - `close`: Cierre definitivo y anulación de la reserva ante desistimiento o falta de prendas aptas.
+  2. Exigir justificación obligatoria (`notes` mínimo 5 caracteres) y registrar auditoría en `resolved_at`, `resolved_by` y `resolution_note` con prefijos normalizados (`[REACTIVACIÓN +Nd]`, `[SUSTITUCIÓN VAR SKU]`, `[CIERRE DEFINITIVO]`).
+  3. Enriquecer la interfaz web del Encargado (`/app/encargado/reservations`) con una pestaña dedicada "Bandeja de Conflictos / Expiradas (CU12)", diagnósticos visuales de stock físico en percha y modal de resolución con bloqueo condicional si no hay stock disponible.
+* **Motivo:** Cuando una reserva expira, el sweeper del CU10 libera inmediatamente el stock para no congelar la mercadería. Si el cliente asiste con retraso justificado, el Encargado debe poder resolver el conflicto en mostrador de manera asistida y auditable sin provocar descuadres de inventario ni sobreventas físicas.
+* **Impacto:**
+  - Schemas y servicios en `backend/app/packages/p4_gestion_compras_reservas`.
+  - Frontend Web PWA en [`frontend/src/app/features/encargado/pages/reservations-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/reservations-page.component.ts).
+  - Suite [`backend/tests/test_cu12_resolve_expired_reservations.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu12_resolve_expired_reservations.py) con 7/7 pruebas aprobadas.
+
+### Registro 19: 2026-11-01 — Política Inviolable de Cambio de Prenda por Talla/Modelo con Cobro de Diferencia (CU17)
+* **Decisión:**
+  1. Implementar la API y la lógica transaccional de cambio de prendas en `p5_gestion_ventas_pos` con endpoints `POST /api/exchanges/quote`, `POST /api/exchanges` y `GET /api/exchanges`.
+  2. Aplicar de forma estricta e inviolable la **Política Comercial 1 (P-Ten-01)**:
+     - Si la nueva prenda tiene mayor precio que la original ($\Delta > 0$), el cambio se consolida **única y exclusivamente si el cliente abona la diferencia** en caja (`difference_paid = True`).
+     - Si no se confirma el pago, la operación es rechazada con `HTTP 400 Bad Request` y el inventario no sufre alteración alguna.
+     - Si $\Delta = 0$, el cambio procede directamente sin requerir pago adicional.
+  3. Exigir validación previa de condición física de la prenda (`good_with_tags`): si está dañada o carece de etiqueta textil intacta, se cancela el cambio.
+  4. Realizar el swap físico de inventario atómico en la misma transacción: incremento de existencias (+1) en la prenda original reingresada y decremento (-1) en la nueva prenda entregada con bloqueo preventivo de concurrencia (`with_for_update`).
+  5. Registro de auditoría persistido en la tabla `garment_exchanges` (congelada bajo la migración `0044`).
+* **Motivo:** Exigencia formal de las políticas de negocio del pliego de Sistemas 2 y garantía de preservación del margen comercial e integridad del inventario de cada tenant.
+* **Impacto:**
+  - Nuevos módulos creados con tags `# logica del CU17`:
+    - [`backend/app/packages/p5_gestion_ventas_pos/schemas/exchange_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/exchange_schema.py)
+    - [`backend/app/packages/p5_gestion_ventas_pos/services/exchange_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/exchange_service.py)
+    - [`backend/app/packages/p5_gestion_ventas_pos/routes/exchange_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/exchange_routes.py)
+  - Montado en [`backend/app/packages/p5_gestion_ventas_pos/router.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/router.py).
+  - Suite de integración [`backend/tests/test_cu17_garment_exchange.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu17_garment_exchange.py) con 8/8 pruebas PASSED (100%).
