@@ -1,0 +1,324 @@
+# FICHAS TÉCNICAS DE CASOS DE USO (ICONIX)
+### FashionStore — Plataforma SaaS Multitenant E-Commerce
+**Metodología:** ICONIX Process (UML 2.5+)  
+**Alcance Oficial:** 25 Casos de Uso (Consolidados para el 2do Parcial)  
+**Documento Fuente:** `docs/ACTORS_AND_USE_CASES.md`
+
+---
+
+## Índice de Fichas Técnicas — Presentación 1 (Hito Inicial: CU01 al CU08)
+
+1. [CU01: Registrar y Gestionar Empresas (Tenants)](#cu01-registrar-y-gestionar-empresas-tenants)
+2. [CU02: Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas](#cu02-gestionar-planes-de-suscripción-básico-pro-empresarial-y-cuotas)
+3. [CU03: Iniciar Sesión Multitenant con JWT y Claims de Tenant](#cu03-iniciar-sesión-multitenant-con-jwt-y-claims-de-tenant)
+4. [CU04: Gestionar Sucursales Bajo Límites del Plan](#cu04-gestionar-sucursales-bajo-límites-del-plan)
+5. [CU05: Gestionar Prendas y Variantes de Precio por Talla](#cu05-gestionar-prendas-y-variantes-de-precio-por-talla)
+6. [CU06: Consultar Catálogo Online con Búsqueda Facetada](#cu06-consultar-catálogo-online-con-búsqueda-facetada)
+7. [CU07: Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)](#cu07-sincronizar-y-descargar-catálogo-a-almacenamiento-local-pwa--sqlite)
+8. [CU08: Consultar Catálogo Offline en Modo Desconectado](#cu08-consultar-catálogo-offline-en-modo-desconectado)
+
+---
+
+### CU01: Registrar y Gestionar Empresas (Tenants)
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU01 - Registrar y Gestionar Empresas (Tenants)** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite al Superadministrador dar de alta y administrar a las empresas contratantes (*tenants*) de la plataforma SaaS, registrando su razón social, NIT/RUT, subdominio único y datos de contacto, garantizando la creación de su entorno lógico aislado en la base de datos compartida. |
+| **Actores** | **Principal:** Superadministrador (`Superadmin`)<br>**Secundario:** Sistema Central de Plataforma (`Backend API`) |
+| **Precondiciones** | El Superadministrador cuenta con sesión activa en el Portal Master SaaS. |
+| **Flujo Normal** | **1.** El Superadministrador accede al módulo de administración de empresas del Portal Master.<br>**2.** Presiona la opción de registrar nueva empresa contratante.<br>**3.** Ingresa la información comercial requerida: nombre comercial, razón social, NIT/RUT, subdominio o identificador comercial único (`slug`), logotipo y datos de contacto del representante.<br>**4.** El Superadministrador acepta los Términos del Servicio SaaS y las cuotas de infraestructura.<br>**5.** El sistema verifica la unicidad del NIT/RUT y del subdominio en la plataforma global.<br>**6.** El sistema genera un identificador universal único (`tenant_id`) y registra la empresa en estado activo.<br>**7.** El sistema notifica la creación exitosa y habilita el entorno lógico de trabajo para la empresa. |
+| **Flujos Alternativos** | **5.a. Subdominio o NIT ya registrado:** Si el subdominio o NIT ya pertenece a otra empresa, el sistema bloquea el registro, notifica la colisión y solicita ingresar valores diferentes.<br>**4.a. Omisión de términos de servicio:** Si no se confirma la aceptación de términos y cuotas, el sistema mantiene inhabilitado el guardado. |
+| **Poscondiciones** | La empresa queda dada de alta con su `tenant_id` propio, quedando preparada para la asignación de planes y la creación de sus sucursales. |
+
+---
+
+### CU02: Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU02 - Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite al Superadministrador parametrizar el catálogo de planes de suscripción y asignar o actualizar el contrato comercial de una empresa entre los planes **Básico** (límite de 3 sucursales, sin IA), **Profesional** (hasta 10 sucursales, con IA generativa) y **Empresarial** (sucursales ilimitadas y soporte analítico completo), regulando vigencias y cuotas en el backend. |
+| **Actores** | **Principal:** Superadministrador (`Superadmin`)<br>**Secundario:** Sistema Central de Plataforma (`Backend API`) |
+| **Precondiciones** | La empresa se encuentra registrada y el Superadministrador está autenticado en la plataforma global. |
+| **Flujo Normal** | **1.** El Superadministrador selecciona una empresa contratante en el portal master y pulsa gestionar plan de suscripción.<br>**2.** El sistema presenta los planes disponibles con sus cuotas: Básico (máximo 3 sucursales físicas activas, sin módulo de IA), Profesional (hasta 10 sucursales activas, acceso a IA Generativa y Machine Learning) y Empresarial (sucursales ilimitadas y copias de seguridad continuas).<br>**3.** El Superadministrador selecciona el plan acordado y la modalidad de facturación (mensual o anual).<br>**4.** El sistema calcula la fecha de vigencia y actualiza la cuota máxima permitida de sucursales y los permisos de módulos habilitados para la empresa.<br>**5.** El sistema confirma la asignación y deja vigentes los nuevos límites a nivel de backend. |
+| **Flujos Alternativos** | **4.a. Intento de degradación de plan con exceso de sucursales activas (*Downgrade Guard*):** Si la empresa tiene más sucursales activas que las permitidas por el nuevo plan (ej. posee 5 sucursales e intenta bajar al Plan Básico que admite máximo 3), el sistema bloquea la operación y notifica que el administrador de la empresa debe dar de baja las sucursales excedentes antes de proceder con el cambio.<br>**3.a. Suscripción en mora o cancelada:** El Superadministrador puede suspender temporalmente el contrato comercial, lo que bloquea el acceso de los usuarios de esa empresa en el próximo inicio de sesión. |
+| **Poscondiciones** | Los límites de sucursales y la habilitación de módulos avanzados quedan actualizados y forzados por el backend para el `tenant_id` correspondiente. |
+
+---
+
+### CU03: Iniciar Sesión Multitenant con JWT y Claims de Tenant
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU03 - Iniciar Sesión Multitenant con JWT y Claims de Tenant** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite a cualquier usuario de la plataforma (Superadministrador, Administrador de Tienda, Encargado, Cajero o Cliente) autenticarse mediante sus credenciales, recibiendo un token de sesión criptográfico (JWT) que contiene embebidos e inmutables su identidad, rol operativo y el `tenant_id` de su empresa para forzar el aislamiento de datos en cada petición. |
+| **Actores** | **Principal:** Usuario de cualquier rol (`Superadmin`, `Tenant Admin`, `Branch Manager`, `Cashier`, `Customer`)<br>**Secundario:** Sistema de Autenticación Central (`Backend API`) |
+| **Precondiciones** | El usuario se encuentra registrado con cuenta activa y la empresa asociada mantiene una suscripción en estado activo. |
+| **Flujo Normal** | **1.** El usuario accede a la pantalla de inicio de sesión e ingresa su correo electrónico y contraseña.<br>**2.** El sistema busca la cuenta del usuario y comprueba la exactitud de la contraseña mediante verificación de hash criptográfico seguro (BCrypt).<br>**3.** El sistema verifica que la empresa a la que pertenece el usuario se encuentre en estado activo con suscripción vigente.<br>**4.** El sistema genera un token de acceso firmado digitalmente (JWT) que incorpora de forma inmutable los claims de contexto: identificador de usuario (`sub`), rol (`rol`), empresa contratante (`tenant_id`) y sucursal asignada (`branch_id`).<br>**5.** La aplicación almacena el token en almacenamiento seguro del cliente y redirige al usuario a la vista correspondiente a sus privilegios. |
+| **Flujos Alternativos** | **2.a. Credenciales inválidas:** Si el correo no existe o la contraseña no coincide, el sistema rechaza el acceso con mensaje de credenciales incorrectas, sin indicar cuál campo falló por seguridad.<br>**3.a. Empresa suspendida o dada de baja:** Si la empresa contratante tiene la suscripción vencida o suspendida, el sistema bloquea el ingreso y notifica que el servicio de su empresa no se encuentra disponible.<br>**2.b. Usuario inactivo:** Si la cuenta individual del empleado fue desactivada, el sistema deniega el acceso e informa el estado de su cuenta. |
+| **Poscondiciones** | El usuario mantiene una sesión de trabajo segura donde cada interacción subsecuente lleva inyectado su `tenant_id` para garantizar el aislamiento estricto de datos. |
+
+---
+
+### CU04: Gestionar Sucursales Bajo Límites del Plan
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU04 - Gestionar Sucursales Bajo Límites del Plan** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite al Administrador de Tienda registrar, editar o georreferenciar las tiendas físicas de su empresa, verificando estrictamente en el backend que la cantidad de sucursales activas no sobrepase la cuota contratada en su plan de suscripción (hasta 3 en Plan Básico, hasta 10 en Plan Profesional). |
+| **Actores** | **Principal:** Administrador de Tienda (`Tenant Admin`)<br>**Secundario:** Sistema Central de Gestión (`Backend API`) |
+| **Precondiciones** | El Administrador de Tienda cuenta con sesión activa en su empresa contratante. |
+| **Flujo Normal** | **1.** El Administrador ingresa a la sección de sucursales físicas de su empresa.<br>**2.** Presiona la opción de registrar nueva sucursal.<br>**3.** Ingresa la información de la tienda: nombre, ciudad, dirección, coordenadas geográficas (latitud y longitud), teléfono y horario de atención.<br>**4.** El sistema contabiliza las sucursales físicas activas actuales de la empresa en la base de datos.<br>**5.** El sistema compara la cantidad contra la cuota máxima permitida por el plan de suscripción de la empresa (3 en Básico, 10 en Profesional o ilimitadas en Empresarial).<br>**6.** Al confirmar que la empresa dispone de cupo libre, el sistema registra la sucursal asignándole el `tenant_id` correspondiente.<br>**7.** El sistema presenta la lista de sucursales actualizada y refresca el indicador de consumo de cuota (ej. 2 de 3 sucursales utilizadas). |
+| **Flujos Alternativos** | **5.a. Cuota de sucursales copada por el plan:** Si la empresa ya alcanzó el límite contratado (ej. 3 sucursales activas en Plan Básico) y se intenta registrar una más, el sistema bloquea inmediatamente la creación en el backend y emite una alerta indicando que debe actualizar su plan a Profesional para dar de alta nuevas tiendas.<br>**3.a. Coordenadas geográficas inválidas:** Si la latitud o longitud ingresada no corresponden a rangos válidos, el sistema solicita su corrección sobre el mapa. |
+| **Poscondiciones** | La sucursal física queda registrada con sus coordenadas para geolocalización, respetando la cuota comercial del contrato SaaS. |
+
+---
+
+### CU05: Gestionar Prendas y Variantes de Precio por Talla
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU05 - Gestionar Prendas y Variantes de Precio por Talla** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite al Administrador de Tienda crear y administrar el catálogo de prendas de vestir de su empresa, estructurando la matriz de variantes por talla y color, y definiendo precios diferenciados por talla (ej. Talla M a Bs 50 frente a Talla L a Bs 70 por uso de mayor tela o corte especial), habilitando el cálculo de diferencias en cambios posteriores. |
+| **Actores** | **Principal:** Administrador de Tienda (`Tenant Admin`)<br>**Secundario:** Sistema Central de Catálogo (`Backend API`) |
+| **Precondiciones** | El usuario cuenta con sesión activa y privilegios de administración de catálogo en su empresa. |
+| **Flujo Normal** | **1.** El Administrador ingresa a la sección de prendas del catálogo y selecciona crear nueva prenda (o editar una existente).<br>**2.** Ingresa los datos generales del modelo: nombre comercial, categoría textil (vestidos, pantalones, blusas), descripción, material de confección y fotografías.<br>**3.** Agrega las variantes de la prenda combinando talla (XS, S, M, L, XL, XXL) y color, asignando a cada una su código comercial compuesto (SKU) y su **precio de venta específico por talla** (permitiendo precios superiores en tallas especiales).<br>**4.** El Administrador confirma el registro presionando guardar prenda.<br>**5.** El sistema valida que los códigos SKU sean únicos dentro del catálogo de la empresa y que todos los precios asignados sean mayores a cero.<br>**6.** El sistema registra la prenda y sus variantes asociadas al `tenant_id` de la empresa.<br>**7.** El sistema presenta la prenda en el catálogo con su matriz de variantes y tabla de precios por talla visible. |
+| **Flujos Alternativos** | **5.a. Código SKU duplicado:** Si se detecta que un SKU ya existe en otra prenda de la misma empresa, el sistema bloquea el guardado e indica el código en colisión para su modificación.<br>**5.b. Precio de variante nulo o negativo:** Si alguna talla tiene precio cero o negativo, el sistema impide la publicación e instruye ingresar precios válidos mayores a cero. |
+| **Poscondiciones** | La prenda queda dada de alta con precios diferenciados por talla, lista para ser consultada en la tienda online, descargada para operación offline y referenciada en políticas de cambio de prenda. |
+
+---
+
+### CU06: Consultar Catálogo Online con Búsqueda Facetada
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU06 - Consultar Catálogo Online con Búsqueda Facetada** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite al cliente explorar las prendas comercializadas en la tienda virtual de la boutique, aplicando múltiples filtros combinados (facetas) en tiempo real por categoría, talla, color y rango de precios, optimizando la búsqueda mediante consultas dinámicas indexadas en el servidor. |
+| **Actores** | **Principal:** Cliente (`Customer`)<br>**Secundario:** Sistema Central de Catálogo (`Backend API`) |
+| **Precondiciones** | La tienda pública de la empresa está accesible y cuenta con prendas activas en el catálogo. |
+| **Flujo Normal** | **1.** El cliente ingresa a la tienda virtual de la boutique y navega hacia la sección de catálogo de prendas.<br>**2.** El sistema presenta las prendas activas organizadas por categorías con fotos, tallas disponibles y rangos de precio.<br>**3.** El cliente aplica filtros facetados seleccionando simultáneamente: categoría de prenda (ej. Vestidos de Noche), talla requerida (ej. Talla M) y rango de precios deseado (ej. Bs 50 a Bs 120).<br>**4.** El sistema evalúa los criterios combinados y ejecuta una consulta filtrada sobre los productos activos del tenant.<br>**5.** El sistema actualiza dinámicamente la grilla mostrando únicamente las prendas que satisfacen todos los filtros aplicados.<br>**6.** El cliente selecciona una prenda para visualizar su ficha detallada, fotos ampliadas y opciones de reserva o compra con despacho. |
+| **Flujos Alternativos** | **4.a. Búsqueda sin coincidencias:** Si ninguna prenda cumple simultáneamente con los filtros seleccionados, el sistema despliega un mensaje informativo indicando que no se hallaron prendas con esos criterios y provee un botón para limpiar o relajar los filtros aplicados. |
+| **Poscondiciones** | El cliente visualiza el subconjunto de prendas que coinciden con su preferencia para continuar hacia el carrito de compras o la reserva en tienda. |
+
+---
+
+### CU07: Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU07 - Sincronizar y Descargar Catálogo a Almacenamiento Local (PWA / SQLite)** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite empaquetar y transferir las prendas activas, variantes de talla, color, precios y existencias locales de una sucursal desde el backend hacia el almacenamiento local del dispositivo cliente (IndexedDB en Web PWA o SQLite en App Móvil Flutter), preparando a la aplicación para operar sin conexión a Internet. |
+| **Actores** | **Principal:** Cliente (`Customer`), Cajero (`Cashier`)<br>**Secundario:** Motor de Sincronización (`Sync Engine`), Sistema Central (`Backend API`) |
+| **Precondiciones** | El dispositivo cuenta con conexión a Internet activa y se ha seleccionado una sucursal física operativa. |
+| **Flujo Normal** | **1.** La aplicación inicia o el usuario presiona la opción de sincronizar catálogo offline.<br>**2.** La aplicación verifica la disponibilidad de conexión a Internet y obtiene la sucursal de trabajo activa.<br>**3.** La aplicación solicita al servidor central el paquete estructurado de catálogo de la sucursal.<br>**4.** El servidor central compila las prendas, variantes con precios por talla, fotografías y existencias disponibles de la sucursal en un paquete optimizado.<br>**5.** La aplicación en el cliente recibe el paquete y ejecuta una transacción atómica local en:<br> a. **Web PWA:** Almacén de objetos en **IndexedDB** (`catalog_products`, `catalog_variants`).<br> b. **App Móvil:** Tablas relacionales en **SQLite** (`local_products`, `local_variants`).<br>**6.** La aplicación actualiza la marca temporal y versión de sincronización.<br>**7.** El sistema notifica al usuario: *"Catálogo sincronizado exitosamente para uso sin conexión"*. |
+| **Flujos Alternativos** | **2.a. Sin conexión al momento de solicitar:** Si el dispositivo carece de Internet al intentar sincronizar, el sistema informa la imposibilidad de descargar y conserva intacta la versión local previa en caché.<br>**4.a. Corte de red durante la transferencia:** Si la conexión se interrumpe a mitad de la descarga, la aplicación cancela la transacción atómica local, descartando datos parciales y manteniendo la versión íntegra anterior.<br>**5.a. Almacenamiento local insuficiente:** Si la memoria del navegador o dispositivo no permite almacenar el lote, el sistema emite una advertencia sin corromper la base local. |
+| **Poscondiciones** | La base de datos local del cliente contiene el catálogo y existencias listos para ser consultados en modo desconectado (CU08) y utilizados para ventas o reservas offline. |
+
+---
+
+### CU08: Consultar Catálogo Offline en Modo Desconectado
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU08 - Consultar Catálogo Offline en Modo Desconectado** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 25/10/2026 |
+| **Descripción** | Permite a los clientes y cajeros navegar y consultar prendas, tallas, precios y existencias en la Web PWA o App Móvil durante una interrupción de Internet (modo avión o falla de red local), leyendo los datos almacenados en la base local (IndexedDB o SQLite) e indicando visualmente que se opera con datos en caché. |
+| **Actores** | **Principal:** Cliente (`Customer`), Cajero (`Cashier`)<br>**Secundario:** Sistema de Almacenamiento Local (PWA / SQLite) |
+| **Precondiciones** | El dispositivo carece de conexión a Internet y cuenta con datos sincronizados previamente en la base local (mediante CU07). |
+| **Flujo Normal** | **1.** El usuario accede a la sección de catálogo de prendas o a la pantalla del punto de venta en su dispositivo.<br>**2.** La aplicación detecta la ausencia de conectividad a Internet.<br>**3.** La aplicación desvía la consulta hacia la base de datos local del dispositivo (IndexedDB en la PWA o SQLite en Flutter).<br>**4.** La aplicación recupera las prendas, variantes de talla, precios y existencias almacenadas en caché.<br>**5.** La aplicación renderiza el catálogo mostrando una insignia visual destacada: *"Modo Sin Conexión - Precios y Stock en Caché"*, junto con la fecha y hora de la última sincronización.<br>**6.** El usuario examina las prendas, filtra por categorías y puede seleccionarlas para agregarlas a ventas offline en efectivo o reservas de contingencia. |
+| **Flujos Alternativos** | **3.a. Base de datos local vacía (nunca se sincronizó CU07):** Si el usuario nunca descargó el catálogo antes de perder la conexión, el sistema informa cordialmente: *"No hay catálogo disponible sin conexión. Conéctese a Internet para descargar el catálogo por primera vez"* y bloquea la navegación desconectada.<br>**2.a. Reconexión de red durante la navegación:** Si la conectividad regresa mientras el usuario consulta, el sistema detecta el evento de red, actualiza la insignia a modo conectado y ofrece la opción de refrescar los datos en tiempo real. |
+| **Poscondiciones** | El usuario consulta prendas y precios sin interrupción operativa ante caídas de red, manteniendo degradación elegante de la interfaz. |
+
+---
+
+## Índice de Fichas Técnicas — Presentación 2 (Hito Comercial y Operativo: CU09 al CU18)
+
+9. [CU09: Comprar Prendas con Stripe y Despacho Condicionado](#cu09-comprar-prendas-con-stripe-y-despacho-condicionado)
+10. [CU10: Crear Reserva Online de Prendas con Vencimiento y Bloqueo](#cu10-crear-reserva-online-de-prendas-con-vencimiento-y-bloqueo)
+11. [CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)](#cu11-registrar-reserva-de-prendas-offline-en-modo-desconectado-pwa--sqlite)
+12. [CU12: Atender y Resolver Conflictos de Reservas Expiradas](#cu12-atender-y-resolver-conflictos-de-reservas-expiradas)
+13. [CU13: Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4](#cu13-registrar-venta-pos-desconectada-en-efectivo-con-contingencia-uuidv4)
+14. [CU14: Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)](#cu14-gestionar-bandeja-local-de-operaciones-pendientes-outbox-pwa--sqlite)
+15. [CU15: Sincronizar Lotes de Ventas con Idempotencia Central (sync_operations)](#cu15-sincronizar-lotes-de-ventas-con-idempotencia-central-sync_operations)
+16. [CU16: Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock](#cu16-gestionar-y-resolver-conflictos-de-ventas-offline-y-quiebres-de-stock)
+17. [CU17: Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado](#cu17-procesar-cambio-de-prenda-por-talla-con-cobro-de-diferencia-y-estado)
+18. [CU18: Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito](#cu18-procesar-devolución-de-prenda-con-retención-operativa-y-nota-de-crédito)
+
+---
+
+### CU09: Comprar Prendas con Stripe y Despacho Condicionado
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU09 - Comprar Prendas con Stripe y Despacho Condicionado** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al cliente formalizar la compra de las prendas contenidas en su carrito digital mediante pasarela segura Stripe, seleccionando entrega a domicilio o retiro presencial, condicionando la generación de la guía y código de despacho estrictamente a la confirmación efectiva del pago por parte de la entidad financiera. |
+| **Actores** | **Principal:** Cliente (`Customer`)<br>**Secundario:** Pasarela Stripe (`Stripe Gateway`), Sistema Central (`Backend API`) |
+| **Precondiciones** | El cliente cuenta con sesión activa, conexión a Internet y prendas con stock libre confirmado en su carrito. |
+| **Flujo Normal** | **1.** El cliente ingresa a la vista de Checkout, selecciona la modalidad de entrega (`ENVIO_DOMICILIO` o `RETIRO_TIENDA`) y marca la casilla de aceptación obligatoria de políticas comerciales y de despacho.<br>**2.** El cliente introduce los datos de su tarjeta de crédito o débito a través del componente seguro de la pasarela Stripe.<br>**3.** El cliente confirma la orden presionando realizar pago.<br>**4.** El sistema registra la orden en estado pendiente de pago e inicia la transacción con Stripe.<br>**5.** La pasarela Stripe procesa la operación y notifica al sistema central la confirmación del cobro exitoso mediante comunicación segura.<br>**6.** El sistema valida la autenticidad del mensaje bancario y actualiza el estado de la orden a pagada.<br>**7.** El sistema genera automáticamente el código de despacho formal (`DSP-XXXXXXXX`) y pasa el pedido a estado listo para despacho.<br>**8.** La aplicación presenta el comprobante digital de compra y activa el seguimiento visual del pedido en cinco etapas. |
+| **Flujos Alternativos** | **1. A1 [Políticas no aceptadas]:** Si el cliente no marca la casilla de aceptación de políticas de cambio, devolución y despacho, el sistema mantiene deshabilitado el botón de pago.<br>**5. A1 [Tarjeta rechazada o fondos insuficientes]:** Si la pasarela bancaria deniega el cobro, el sistema mantiene la orden en estado pendiente de pago, bloquea estrictamente la generación de la orden de despacho e invita al cliente a ingresar otro medio de pago.<br>**4. A1 [Quiebre de stock concurrente]:** Si durante el proceso de pago otra transacción agota las existencias de alguna prenda del carrito, el sistema aborta la operación, cancela la retención temporal y notifica al cliente para que ajuste su pedido. |
+| **Poscondiciones** | Venta digital asentada contablemente y despacho logístico condicionado exclusivamente a la confirmación real del cobro. |
+
+---
+
+### CU10: Crear Reserva Online de Prendas con Vencimiento y Bloqueo
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU10 - Crear Reserva Online de Prendas con Vencimiento y Bloqueo** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al cliente apartar prendas específicas en una sucursal física mediante la tienda virtual para probárselas antes de comprar, ejecutando un bloqueo atómico sobre las existencias disponibles de la tienda y asignando una ventana de vigencia con vencimiento automático (de 24 a 48 horas a partir de la fecha de visita). |
+| **Actores** | **Principal:** Cliente (`Customer`)<br>**Secundario:** Sistema Central de Reservas (`Backend API`) |
+| **Precondiciones** | Prenda con existencias libres en la sucursal seleccionada y cliente autenticado en la plataforma. |
+| **Flujo Normal** | **1.** El cliente consulta la ficha de una prenda, selecciona talla, color y sucursal física de retiro.<br>**2.** El cliente selecciona la opción de reservar para probar en tienda y define la fecha estimada de su visita presencial (dentro de un rango de 1 a 7 días).<br>**3.** El sistema verifica que la sucursal disponga de unidades libres no comprometidas.<br>**4.** El sistema realiza un bloqueo atómico de inventario, reduciendo las existencias disponibles de la sucursal e incrementando las existencias reservadas.<br>**5.** El sistema calcula la fecha y hora exacta de vencimiento (`expires_at = fecha_visita + 24h`) y genera el código alfanumérico identificador (`RES-XXXXXXXX`) y el código QR de retiro.<br>**6.** La aplicación presenta el comprobante digital de reserva con el temporizador visible y recomendaciones para su visita a la sucursal. |
+| **Flujos Alternativos** | **3. A1 [Existencias agotadas en sucursal]:** Si al confirmar la reserva la variante ya no cuenta con unidades libres, el sistema alerta que el stock fue comprometido y ofrece reservar en otra tienda física de la boutique.<br>**2. A1 [Límite de reservas simultáneas excedido]:** Si el cliente acumula más reservas activas que el cupo máximo permitido por la política comercial de la empresa, el sistema solicita acudir a retirar o cancelar reservas previas antes de generar una nueva.<br>**2. A2 [Fecha de visita fuera de rango]:** Si el cliente ingresa una fecha posterior al horizonte permitido (más de 7 días), el sistema solicita seleccionar una fecha dentro del periodo habilitado. |
+| **Poscondiciones** | Prenda físicamente apartada de la venta general con temporizador de caducidad activo y comprobante digital en posesión del cliente. |
+
+---
+
+### CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU11 - Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al cliente o cajero registrar el apartado de una prenda desde la interfaz de la aplicación cuando no se dispone de conexión a Internet, almacenando la operación en la base local con un identificador universal único (UUIDv4) y descontando provisionalmente el stock local para su posterior sincronización. |
+| **Actores** | **Principal:** Cliente (`Customer`), Cajero (`Cashier`)<br>**Secundario:** Sistema de Almacenamiento Local (PWA / SQLite) |
+| **Precondiciones** | El dispositivo carece de conexión a Internet y posee el catálogo de existencias sincronizado en la base local. |
+| **Flujo Normal** | **1.** El usuario selecciona la prenda y talla deseada desde el catálogo local en modo sin conexión y pulsa apartar prenda.<br>**2.** El sistema genera un identificador único universal (`client_reservation_id UUIDv4`) para la transacción offline.<br>**3.** El sistema guarda la reserva en el almacén local del dispositivo con estado pendiente de sincronización.<br>**4.** El sistema descuenta la unidad del inventario local en caché para evitar que la misma terminal vuelva a reservar o vender la misma prenda.<br>**5.** La aplicación emite el comprobante de contingencia con el código UUID visible y la advertencia: *"Reserva Offline - Sujeta a confirmación al restablecerse la conexión a Internet"*. |
+| **Flujos Alternativos** | **1. A1 [Stock local en caché agotado]:** Si la base local marca existencias en cero para la variante seleccionada, el sistema impide la reserva e informa que no hay unidades conocidas en la sucursal.<br>**3. A1 [Fallo en almacenamiento local]:** Si ocurre un error de cuota o corrupción en el almacenamiento local del dispositivo, el sistema cancela la operación y mantiene íntegro el inventario previo. |
+| **Poscondiciones** | Reserva almacenada de forma inmutable en el dispositivo cliente esperando el restablecimiento de red para su subida al servidor. |
+
+---
+
+### CU12: Atender y Resolver Conflictos de Reservas Expiradas
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU12 - Atender y Resolver Conflictos de Reservas Expiradas** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite liberar automáticamente el inventario de aquellas reservas que superaron su fecha límite de validez sin ser retiradas, y faculta al Encargado de Sucursal para resolver administrativamente reclamos presenciales de clientes que se presentan con reservas expiradas mediante reasignación de stock, sustitución de prenda o anulación formal con nota de auditoría. |
+| **Actores** | **Principal:** Encargado de Sucursal (`Branch Manager`)<br>**Secundario:** Proceso Central de Expiración (`Backend API`), Cliente (`Customer`) |
+| **Precondiciones** | Existen reservas registradas cuya fecha y hora límite ha vencido (`expires_at < now()`). |
+| **Flujo Normal** | **1.** El proceso programado en el servidor inspecciona las reservas activas y detecta registros cuya fecha límite ha expirado.<br>**2.** El sistema actualiza el estado de la reserva a expirada, cancela el apartado y devuelve automáticamente las unidades al stock disponible público de la sucursal.<br>**3.** Si un cliente asiste tardíamente a la tienda reclamando una reserva vencida, el Encargado abre la sección de resolución de conflictos de reserva e introduce el código.<br>**4.** El sistema muestra los datos de la reserva, la hora de expiración y las existencias actuales de la prenda en la tienda.<br>**5.** El Encargado evalúa la situación con el cliente y selecciona una vía de resolución:<br> a. Si aún hay existencias disponibles en tienda, revalida la reserva y la transfiere directamente a la caja para cobro.<br> b. Si la prenda ya fue vendida a otro comprador, propone una talla alternativa o modelo similar.<br> c. Si el cliente no acepta alternativas, confirma la anulación definitiva de la reserva.<br>**6.** El Encargado registra la justificación en una nota de auditoría y el sistema asienta la resolución cerrando el conflicto. |
+| **Flujos Alternativos** | **4. A1 [Código de reserva no localizado o de otra sucursal]:** Si el código presentado no existe o corresponde a otra sede, el sistema alerta al Encargado para que oriente al cliente a su tienda de origen.<br>**5. A1 [Cliente desiste tras prueba]:** Si el cliente asiste dentro de plazo pero desiste de comprar la prenda tras medírsela en el probador, el Encargado cancela la reserva en el sistema y el stock regresa a venta libre de inmediato. |
+| **Poscondiciones** | Ningún inventario queda retenido indefinidamente; el stock no reclamado se restituye a venta pública y las atenciones tardías quedan documentadas con trazabilidad. |
+
+---
+
+### CU13: Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU13 - Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al cajero continuar cobrando y emitiendo ventas presenciales en el punto de venta durante caídas de Internet, forzando obligatoriamente el cobro en efectivo al contado (Política 5), generando un identificador único universal (UUIDv4) y guardando la transacción localmente para garantizar la continuidad operativa de la sucursal. |
+| **Actores** | **Principal:** Cajero / Vendedor (`Cashier`)<br>**Secundario:** Sistema POS Local (IndexedDB / SQLite) |
+| **Precondiciones** | La terminal de punto de venta no dispone de conexión a Internet y posee el catálogo local cargado en IndexedDB o SQLite. |
+| **Flujo Normal** | **1.** El cajero escanea o selecciona las prendas solicitadas por el cliente desde la interfaz de contingencia del POS.<br>**2.** El sistema calcula subtotales e impuestos basándose en los precios de las variantes almacenadas en la base local.<br>**3.** El sistema impone la regla comercial offline: restringe los medios de pago permitiendo **únicamente cobro en efectivo al contado**, manteniendo deshabilitadas las opciones electrónicas.<br>**4.** El cajero ingresa el importe de dinero recibido y el sistema calcula el cambio a entregar.<br>**5.** El cajero confirma la venta offline.<br>**6.** El sistema genera un identificador universal único (`operation_uuid` versión UUIDv4) para la transacción.<br>**7.** El sistema guarda la venta en el almacenamiento local del dispositivo con estado pendiente de sincronización.<br>**8.** El sistema descuenta el stock en la base local para no volver a ofrecer las mismas prendas en cobros posteriores en esa terminal.<br>**9.** El sistema emite e imprime el comprobante de venta de contingencia con el código UUID visible y la advertencia de operación offline. |
+| **Flujos Alternativos** | **3. A1 [Intento de cobro con tarjeta o medio electrónico]:** Si el cajero intenta seleccionar pago con tarjeta o transferencia digital, el sistema bloquea la acción y emite una alerta indicando que por política de seguridad sin red solo se admite efectivo.<br>**4. A1 [Efectivo entregado menor al total]:** Si el dinero ingresado no cubre el monto total de la venta, el sistema no permite confirmar la operación hasta ingresar el monto completo.<br>**1. A1 [Stock local en cero]:** Si el inventario local marca cero unidades de la prenda, el sistema advierte el posible desabastecimiento antes de registrar. |
+| **Poscondiciones** | Venta presencial asentada de forma inmutable en el almacenamiento local del dispositivo con UUIDv4 propio, lista para ser enviada al servidor al reanudar la red. |
+
+---
+
+### CU14: Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU14 - Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al cajero o personal de tienda consultar, inspeccionar y monitorear la bandeja de salida (*outbox*) de todas las ventas y reservas offline emitidas en el dispositivo que aún no han sido transferidas al servidor central, visualizando el contador de operaciones pendientes y pudiendo forzar el envío manual al restablecerse la red. |
+| **Actores** | **Principal:** Cajero / Vendedor (`Cashier`)<br>**Secundario:** Sistema de Almacenamiento Local (PWA / SQLite) |
+| **Precondiciones** | Se han registrado una o más operaciones en modo desconectado en el dispositivo. |
+| **Flujo Normal** | **1.** El cajero ingresa a la pestaña de "Operaciones Pendientes (Outbox)" desde el panel del punto de venta.<br>**2.** El sistema recupera de la base local la lista de transacciones offline y presenta en pantalla: código UUID, fecha y hora de emisión, importe total y estado actual (`PENDIENTE_SYNC`).<br>**3.** El sistema despliega un indicador visual en color ámbar con la cantidad total de tickets en espera de sincronización.<br>**4.** El cajero selecciona una transacción para inspeccionar el detalle de prendas, tallas y desglose de cobro.<br>**5.** Al verificar que la conexión a Internet ha regresado, el cajero puede presionar la opción de forzar sincronización manual para despachar el lote inmediatamente. |
+| **Flujos Alternativos** | **2. A1 [Bandeja vacía sin operaciones pendientes]:** Si no existen ventas pendientes de subida, el sistema presenta la bandeja limpia con un indicador verde que confirma que todos los registros locales están sincronizados con la nube.<br>**5. A1 [Dispositivo aún sin red al forzar envío]:** Si el usuario presiona forzar sincronización pero la red continúa caída, el sistema notifica que el dispositivo sigue desconectado y conserva las transacciones en la bandeja sin alterarlas. |
+| **Poscondiciones** | El personal de tienda mantiene control visual de los comprobantes locales emitidos que aún están pendientes de consolidación central. |
+
+---
+
+### CU15: Sincronizar Lotes de Ventas con Idempotencia Central (sync_operations)
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU15 - Sincronizar Lotes de Ventas con Idempotencia Central (sync_operations)** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite transmitir en lotes hacia el backend las ventas registradas localmente en contingencia cuando se restablece la conexión a Internet, aplicando un protocolo de **idempotencia transaccional** mediante validación del UUID contra la tabla de auditoría `sync_operations` para impedir que una transacción se procese o descuente inventario más de una vez ante reintentos de red. |
+| **Actores** | **Principal:** Motor de Sincronización (`Sync Engine`), Cajero (`Cashier`)<br>**Secundario:** Sistema Central (`Backend API`) |
+| **Precondiciones** | El dispositivo recupera la conexión a Internet y existen ventas con estado `PENDIENTE_SYNC` en la base local. |
+| **Flujo Normal** | **1.** El motor de sincronización detecta el evento de reconexión a Internet y empaqueta las ventas locales pendientes de la sucursal.<br>**2.** La aplicación despacha el lote de operaciones hacia el endpoint central de sincronización del backend.<br>**3.** El sistema central procesa cada venta del lote bajo control transaccional estricto:<br> a. Consulta la tabla de auditoría de sincronización buscando el código universal (`operation_uuid`).<br> b. Al verificar que el UUID no existe previamente, inserta la venta definitiva, registra el detalle de prendas vendidas, descuenta las unidades del inventario central de la sucursal y asienta el UUID en la tabla de auditoría con estado aplicado.<br>**4.** El sistema central retorna un acuse de recibo confirmando la recepción y aceptación de las operaciones procesadas.<br>**5.** La aplicación en el cliente actualiza el estado de las ventas locales a sincronizadas y vacía la bandeja outbox, cambiando el indicador visual a color verde. |
+| **Flujos Alternativos** | **3. A1 [Operación duplicada por reintento de red - Garantía de Idempotencia]:** Si por una pérdida intermitente de señal el cliente reenvía un lote que el servidor ya había recibido y aplicado, el sistema central detecta que el UUID ya existe en la tabla de auditoría; confirma inmediatamente el éxito al cliente **sin volver a insertar la venta ni descontar existencias por segunda vez**.<br>**3. A2 [Venta con quiebre de stock central detectado]:** Si al momento de aplicar la venta offline las existencias centrales de la prenda ya fueron agotadas por ventas online concurrentes, el sistema central marca la transacción en estado en conflicto para resolución gerencial (CU16) y continúa procesando el resto del lote.<br>**2. A1 [Falla de comunicación durante la subida]:** Si la conexión se interrumpe antes de recibir el acuse de recibo del servidor, el cliente mantiene todas las operaciones en la bandeja outbox para reintentar en el siguiente ciclo. |
+| **Poscondiciones** | Ventas e ingresos consolidados en la base de datos central sin duplicaciones contables y con inventario central actualizado. |
+
+---
+
+### CU16: Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU16 - Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite al Encargado de Sucursal inspeccionar, conciliar y resolver aquellas ventas emitidas offline que entraron en estado de conflicto durante la sincronización debido a quiebres de inventario central (sobreventa concurrente durante la desconexión), permitiendo autorizar stock negativo con reposición, coordinar sustitución de prenda o emitir una Nota de Crédito al cliente. |
+| **Actores** | **Principal:** Encargado de Sucursal (`Branch Manager`)<br>**Secundario:** Sistema Central de Auditoría (`Backend API`), Cajero (`Cashier`) |
+| **Precondiciones** | Existen ventas offline sincronizadas marcadas con estado `EN_CONFLICTO` en la sucursal. |
+| **Flujo Normal** | **1.** El sistema alerta al Encargado de Sucursal sobre una venta offline que colisionó por falta de existencias centrales al sincronizarse.<br>**2.** El Encargado accede a la sección de resolución de conflictos de venta e inspecciona el ticket emitido, el cajero responsable y la prenda afectada.<br>**3.** El Encargado evalúa la situación física de la tienda y selecciona una de las tres vías de resolución reglamentarias:<br> a. **Resolución por Reposición:** Autoriza la venta asentando saldo temporal negativo en inventario y genera una orden de reposición prioritaria desde otra sucursal.<br> b. **Resolución por Sustitución:** Contacta al cliente para acordar el cambio por otra prenda o talla disponible de igual valor.<br> c. **Resolución Contable con Nota de Crédito:** Anula contablemente la venta del ítem y emite una Nota de Crédito formal a favor del cliente.<br>**4.** El Encargado redacta una nota de auditoría justificando la decisión tomada.<br>**5.** El sistema actualiza el registro de la venta a estado resuelto, asienta los movimientos de inventario correspondientes y cierra la incidencia. |
+| **Flujos Alternativos** | **3. A1 [Discrepancia física en tienda]:** Si el Encargado constata que la prenda física aún se encuentra en mostrador por error de despacho, cancela el conflicto y ajusta el inventario central manualmente.<br>**4. A1 [Omisión de nota de justificación]:** El sistema bloquea el cierre del conflicto si el Encargado no introduce la justificación obligatoria de auditoría. |
+| **Poscondiciones** | Consistencia eventual de inventario y balances restaurada con registro de auditoría completo y sin descuadres en la caja física. |
+
+---
+
+### CU17: Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU17 - Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite tramitar el cambio de una prenda previamente adquirida por otra talla o modelo dentro del plazo de garantía; si la prenda nueva tiene un precio de venta superior, el cambio **se consolida única y exclusivamente cuando el cliente abona la diferencia de precio** en caja (Política 1), exigiendo además que la prenda devuelta conserve su etiqueta original y no presente signos de uso. |
+| **Actores** | **Principal:** Cajero / Vendedor (`Cashier`), Cliente (`Customer`)<br>**Secundario:** Sistema POS Central (`Backend API`) |
+| **Precondiciones** | El cliente presenta el comprobante de venta original y la solicitud se encuentra dentro del plazo comercial establecido por la empresa (ej. 15 o 30 días). |
+| **Flujo Normal** | **1.** El cajero introduce el número de ticket o código UUID de la venta original en el sistema.<br>**2.** El sistema recupera los ítems de la compra y el cajero selecciona la prenda que el cliente desea cambiar (ej. Vestido Talla M, pagado originalmente a Bs 50).<br>**3.** El cajero realiza la inspección física de la prenda, confirmando que mantiene su etiqueta textil original y no presenta señales de lavado ni desgaste.<br>**4.** El cajero selecciona la nueva prenda o talla solicitada dentro del catálogo de la boutique (ej. Vestido Talla L a precio de lista Bs 70).<br>**5.** El sistema calcula la diferencia de precio: Importe Prenda Nueva menos Importe Abonado Original (Bs 70 - Bs 50 = Bs 20 a cobrar).<br>**6.** El sistema solicita el cobro de la diferencia de precio e instruye al cajero solicitar el abono correspondiente.<br>**7.** El cliente entrega el dinero en caja y el cajero registra el pago del saldo de Bs 20.<br>**8.** El sistema consolida la operación de cambio: reingresa la prenda devuelta al stock disponible, descuenta la nueva prenda entregada y asienta el ingreso adicional en la caja.<br>**9.** El sistema emite el comprobante oficial de cambio detallando la transacción y entrega la nueva prenda al cliente. |
+| **Flujos Alternativos** | **3. A1 [Prenda sin etiqueta o con señales de uso]:** Si el cajero constata que la prenda carece de etiqueta textil o fue usada, marca la condición física como no conforme; el sistema bloquea inmediatamente la operación y se devuelve la prenda al cliente sin cambio.<br>**7. A1 [Cliente no abona la diferencia de precio - Regla Inviolable]:** Si el cliente se niega a pagar los Bs 20 de diferencia comercial, el sistema aborta la transacción de inmediato; no se modifica el inventario de ninguna talla y el cliente conserva su prenda original.<br>**5. A1 [Prenda nueva de menor valor]:** Si la prenda de reemplazo cuesta menos que la original (ej. de Bs 70 a Bs 50), el sistema calcula el saldo a favor del cliente y genera una Nota de Crédito digital por la diferencia (Bs 20) para compras futuras.<br>**1. A1 [Ticket vencido fuera de plazo]:** Si han transcurrido más días que los permitidos por la política de la empresa desde la compra, el sistema rechaza el inicio del trámite. |
+| **Poscondiciones** | Cambio formalmente consolidado respetando el cobro obligatorio de la diferencia de precio, con inventarios y caja de la sucursal balanceados. |
+
+---
+
+### CU18: Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito
+
+| Campo | Especificación ICONIX |
+| :--- | :--- |
+| **Nombre** | **CU18 - Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** |
+| **Autor** | Equipo FashionStore / Sistemas 2 |
+| **Fecha** | 31/10/2026 |
+| **Descripción** | Permite tramitar la devolución formal de una prenda de vestir dentro del plazo hábil, aplicando la política comercial de retención operativa configurada por la empresa (entre el 20% y el 50% sobre el importe abonado) por concepto de desinfección textil e inspección logística, y emitiendo el reembolso neto (entre el 50% y el 80%) preferentemente mediante una **Nota de Crédito Digital** para compras futuras. |
+| **Actores** | **Principal:** Cajero / Vendedor (`Cashier`), Cliente (`Customer`)<br>**Secundario:** Sistema POS Central (`Backend API`) |
+| **Precondiciones** | El cliente presenta comprobante de compra válido dentro del plazo de devolución del tenant (ej. 7 a 15 días posteriores a la venta). |
+| **Flujo Normal** | **1.** El cajero localiza la venta original en el sistema mediante el código de ticket.<br>**2.** El cajero selecciona la prenda que el cliente devuelve y verifica que conserve su etiqueta original sin indicios de uso.<br>**3.** El sistema consulta el porcentaje de retención operativa configurado para la empresa (tasa $R$ entre 20% y 50%) y calcula el desglose financiero:<br> a. Importe pagado originalmente: Bs 100.<br> b. Retención operativa de la boutique (ej. 30%): Bs 30 (queda a favor de la empresa).<br> c. Reembolso neto a entregar al cliente (70%): Bs 70.<br>**4.** El sistema presenta el desglose en pantalla y el cliente elige la modalidad de reembolso deseada:<br> a. **Modalidad A:** Emisión de **Nota de Crédito Digital** (`NC-YYYYMMDD-XXXX`) utilizable en cualquier sucursal.<br> b. **Modalidad B:** Devolución de dinero en efectivo de la caja.<br>**5.** El cajero confirma la operación y entrega el comprobante de la Nota de Crédito o el dinero al cliente.<br>**6.** El sistema registra la devolución, reincorpora la prenda al inventario de la sucursal y asienta el egreso y retención contable.<br>**7.** El sistema imprime la constancia de devolución para respaldo de ambas partes. |
+| **Flujos Alternativos** | **2. A1 [Prenda usada o sin etiquetas]:** Si la prenda presenta signos de uso o fue alterada, el cajero rechaza la solicitud según la política de sanidad textil de la empresa.<br>**4. A1 [Cliente rechaza la retención porcentual]:** Si el cliente no acepta el descuento de retención operativa establecido por la boutique, se cancela la devolución y el cliente conserva la prenda sin alterar el inventario ni la caja.<br>**1. A1 [Plazo de devolución expirado]:** Si la solicitud se realiza fuera del periodo estipulado por el tenant, el sistema bloquea el procesamiento de la devolución. |
+| **Poscondiciones** | Devolución asentada aplicando la retención porcentual reglamentaria, con reingreso de la prenda al inventario y emisión de Nota de Crédito o egreso de caja documentado. |
+
+---
+*Fin de las Fichas de la Presentación 2 (CU09 al CU18). Los Casos de Uso del CU19 al CU25 corresponden a la Presentación 3 (Geolocalización, Inteligencia Artificial y Dashboard).*

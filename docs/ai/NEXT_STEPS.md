@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 Estado de Situación: 10 de 25 Casos de Uso Implementados (100% Verificados)
+## 🎯 Estado de Situación: 11 de 25 Casos de Uso Implementados (100% Verificados)
 
 ### Casos de Uso Listos y Funcionales:
 - [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** (`p0_saas_plataforma`)
@@ -17,16 +17,17 @@
 - [x] **`CU08` – Consultar Catálogo Offline en Modo Desconectado** (`p3_gestion_inventario_disponibilidad`)
 - [x] **`CU09` – Comprar Prendas con Stripe y Despacho Condicionado** (`p4_gestion_compras_reservas`)
 - [x] **`CU10` – Crear Reserva Online de Prendas con Vencimiento y Bloqueo** (`p4_gestion_compras_reservas`)
+- [x] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** (`p4_gestion_compras_reservas`)
 
 ---
 
 ## 🚀 Tareas Inmediatas de Implementación (Presentación 2)
 
 ### Bloque A: Reservas Offline y Resolución de Expiraciones (`CU11` y `CU12`)
-1. **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite):**
-   - [ ] Conectar la bandeja de reservas offline de `idb-reservations.service.ts` en Angular con el detector de red.
-   - [ ] Implementar la persistencia SQLite en Flutter para apartado desconectado.
-2. **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas:**
+1. **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite):** (Completado)
+   - [x] Conectar la bandeja de reservas offline de `idb-reservations.service.ts` en Angular con el detector de red.
+   - [x] Implementar la persistencia SQLite en Flutter para apartado desconectado y bandeja de salida outbox.
+2. **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas:** (Siguiente Tarea)
    - [ ] Tarea periódica de expiración (`order_service.py` / `expire_daily.py`), endpoints de resolución `/api/reservations/{id}/resolve`.
    - [ ] Frontend Web: Panel de Encargado de Sucursal para liberar prendas no retiradas a stock general.
 

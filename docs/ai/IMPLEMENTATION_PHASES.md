@@ -36,8 +36,8 @@
   - *Estado:* 100% Implementado (Backend `p4`, Frontend Web y Mobile Flutter; cumplimiento estricto de Política 3 de despacho con tracking `DSP-...`).
 - [x] **`CU10` – Crear Reserva Online de Prendas con Vencimiento y Bloqueo** [Modificado 1P]
   - *Estado:* 100% Implementado (Backend `p4` con bloqueo atómico `reserved_quantity`, código `RES-XXXXXXXX`, QR y vista boutique en Angular).
-- [ ] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** [Nuevo 2P]
-  - *Criterio de éxito:* Apartado desconectado guardado en almacén local `pending_reservations` con UUIDv4 esperando conectividad.
+- [x] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p4` con `client_reservation_id` e idempotencia, PWA Angular con `IdbReservationsService` y Outbox offline, Flutter con `LocalCatalogDb` tabla SQLite `local_pending_reservations`, tray de reservas pendientes y sincronización).
 - [ ] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** [Nuevo 2P]
   - *Criterio de éxito:* Proceso de liberación automática de stock tras 24h-48h y resolución administrativa de discrepancias en mostrador.
 - [ ] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]

@@ -25,8 +25,8 @@ def get_active_subscription(db: Session, company_id: UUID) -> Subscription | Non
     return (
         db.query(Subscription)
         .filter(
-            Subscription.tenant_id == company_id,
-            Subscription.status.in_(["active", "trialing"]),
+            Subscription.company_id == company_id,
+            Subscription.status.in_(["ACTIVA", "active", "trialing"]),
         )
         .first()
     )

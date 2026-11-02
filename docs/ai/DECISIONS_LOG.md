@@ -145,3 +145,25 @@
   - Actualización de `docs/ACTORS_AND_USE_CASES.md`, `docs/BUSINESS_POLICIES.md`, `docs/ai/IMPLEMENTATION_PHASES.md` y `docs/ai/CURRENT_STATE.md`.
   - Cero roturas en la base de datos (la migración `0044` ya contiene todas las tablas necesarias).
   - Trazabilidad del 100% de los Requisitos Funcionales y No Funcionales.
+
+### Registro 16: 2026-11-01 — Liberación Inmediata de Cuota y Desactivación Defensiva en Sucursales (CU04)
+* **Decisión:** 
+  1. Implementar mecanismo de desactivación defensiva (*soft-delete*) en `delete_branch()`: si la sucursal posee registros históricos contables o de inventario vinculados, la operación conmuta automáticamente a desactivación (`is_active = False`, `is_default = False`), desvinculando usuarios asignados sin romper restricciones FK de PostgreSQL.
+  2. Unificar la consulta de suscripción en `quota_service.py` y `branch_service.py` (`company_id`, estatus `ACTIVA`, `active`, `trialing`).
+  3. Asegurar que `/api/branches/quota` calcule la cuota en tiempo real sobre la base de datos sin intermediarios en caché de proceso.
+* **Motivo:** Prevenir bloqueos por clave foránea al eliminar sucursales con movimientos históricos, y garantizar que al desactivar o eliminar una sucursal el cupo se libere de forma instantánea sin requerir reinicio del servidor FastAPI.
+* **Impacto:**
+  - Modificación en [`backend/app/packages/p1_gestion_usuarios_acceso/services/branch_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p1_gestion_usuarios_acceso/services/branch_service.py) y [`backend/app/packages/p0_saas_plataforma/services/quota_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/services/quota_service.py).
+  - Creación de suite automatizada [`backend/tests/test_cu04_branch_quota_release.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu04_branch_quota_release.py) con 6/6 pruebas aprobadas.
+
+### Registro 17: 2026-11-01 — Barrido Continuo de Reservas Vencidas y Desbloqueo Automático de Stock (CU10)
+* **Decisión:**
+  1. Consolidar el barrido periódico de expiración de reservas en una función unificada y atómica `run_expiration_sweep(db)` dentro de `expiration_service.py`, encargada de barrer reservas vencidas (`expires_at <= today`), órdenes pendientes vencidas y reservas transferidas a carrito que superaron su ventana de gracia (15 min).
+  2. Habilitar ejecución dual del sweeper:
+     - **Background Worker asíncrono continuo** en `main.py` mediante `_expiration_worker_loop()` que ejecuta una pasada inmediata al levantar el servidor y luego revisiones cada 60 segundos sin bloquear el event loop de FastAPI ni la API REST.
+     - **Endpoint administrativo seguro** `POST /api/reservations/sweeper` restringido a roles `administrador` y `encargado`, para forzar barridos bajo demanda, pruebas automatizadas o ejecución vía cron externo / webhook.
+  3. Reemplazar `joinedload()` por `selectinload(Reservation.items)` en queries con `with_for_update(skip_locked=True)` para evitar fallos de PostgreSQL (`FOR UPDATE cannot be applied to the nullable side of an outer join`).
+* **Motivo:** Cumplir estrictamente la política de negocio del CU10 y el pliego de Sistemas 2: las reservas online comprometen stock físico (`reserved_quantity`); al expirar el plazo fijado por la tienda sin que el cliente complete la compra, el inventario retenido debe liberarse de inmediato a disponibilidad general (`quantity - reserved_quantity`) de forma desatendida y confiable.
+* **Impacto:**
+  - Archivos actualizados: [`backend/app/packages/p4_gestion_compras_reservas/services/expiration_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/services/expiration_service.py), [`backend/app/packages/p4_gestion_compras_reservas/services/reservation_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/services/reservation_service.py), [`backend/app/packages/p4_gestion_compras_reservas/routes/reservation_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p4_gestion_compras_reservas/routes/reservation_routes.py), [`backend/main.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/main.py).
+  - Suite de pruebas de integración [`backend/tests/test_cu10_reservation_expiration_sweeper.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu10_reservation_expiration_sweeper.py) con 4/4 pruebas PASSED.

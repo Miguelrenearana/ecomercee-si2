@@ -1,3 +1,4 @@
+import '../../features/reservations/reservation_models.dart';
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
@@ -41,6 +42,35 @@ class LocalCatalogDb {
           CREATE TABLE catalog_sync_meta (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS local_pending_reservations (
+            client_reservation_id TEXT PRIMARY KEY,
+            branch_id TEXT NOT NULL,
+            branch_name TEXT,
+            visit_date TEXT NOT NULL,
+            items_json TEXT NOT NULL,
+            total_amount REAL NOT NULL,
+            item_count INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            sync_status TEXT DEFAULT 'PENDIENTE_SYNC'
+          )
+        ''');
+      },
+      onOpen: (db) async {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS local_pending_reservations (
+            client_reservation_id TEXT PRIMARY KEY,
+            branch_id TEXT NOT NULL,
+            branch_name TEXT,
+            visit_date TEXT NOT NULL,
+            items_json TEXT NOT NULL,
+            total_amount REAL NOT NULL,
+            item_count INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            sync_status TEXT DEFAULT 'PENDIENTE_SYNC'
           )
         ''');
       },
@@ -206,5 +236,37 @@ class LocalCatalogDb {
     final db = await database;
     await db.delete('local_products');
     await db.delete('catalog_sync_meta');
+  }
+
+  Future<void> savePendingReservation(PendingOfflineReservation reservation) async {
+    final db = await database;
+    await db.insert(
+      'local_pending_reservations',
+      reservation.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<PendingOfflineReservation>> getPendingReservations() async {
+    final db = await database;
+    final rows = await db.query(
+      'local_pending_reservations',
+      orderBy: 'created_at DESC',
+    );
+    return rows.map((r) => PendingOfflineReservation.fromMap(r)).toList();
+  }
+
+  Future<void> deletePendingReservation(String clientReservationId) async {
+    final db = await database;
+    await db.delete(
+      'local_pending_reservations',
+      where: 'client_reservation_id = ?',
+      whereArgs: [clientReservationId],
+    );
+  }
+
+  Future<void> clearPendingReservations() async {
+    final db = await database;
+    await db.delete('local_pending_reservations');
   }
 }

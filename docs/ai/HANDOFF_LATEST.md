@@ -1,57 +1,52 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 31/10/2026 (Consolidación Definitiva a 25 Casos de Uso y Políticas de Negocio)
+## Estado de Relevo Operativo al 01/11/2026 (Consolidación de CU11: Reservas Offline en PWA / SQLite y Sincronización Idempotente)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
 
-1. **Reestructuración y Poda Oficial a 25 Casos de Uso (100% Alineados al Examen de Sistemas 2):**
-   - Se descartaron casos de uso redundantes o de CRUDs básicos del primer parcial (Transferencias de inventario, Gestión de perfil cliente, Realidad Aumentada no prioritaria, POS online convencional sin desafío offline).
-   - Se consolidó la lista canónica en exactamente **25 Casos de Uso**, distribuidos armónicamente entre las 3 presentaciones oficiales de cúpula:
-     - **Presentación 1 (25/10/2026):** `CU01` a `CU08` (8 CUs) $\rightarrow$ **100% Implementados y Verificados**.
-     - **Presentación 2 (01/11/2026):** `CU09` a `CU18` (10 CUs) $\rightarrow$ `CU09` (Stripe) y `CU10` (Reservas online) al 100%; `CU11` a `CU18` en curso.
-     - **Presentación 3 (08/11/2026):** `CU19` a `CU25` (7 CUs) $\rightarrow$ IA Gemini, ML Supervisado/No Supervisado, Rutas OSM y Dashboard.
-   - **Trazabilidad Total:** Cada uno de los 6 Retos del Examen ([`docs/informes/Ex_Parcial_2_Sistemas-2.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/Ex_Parcial_2_Sistemas-2.md)) cuenta con casos de uso específicos y rigurosamente controlados.
+1. **Implementación Fullstack de CU11 (Registrar Reserva de Prendas Offline en Modo Desconectado):**
+   - **Backend (`p4_gestion_compras_reservas`):**
+     - Soporte integral de `client_reservation_id` (UUIDv4) para trazabilidad de idempotencia en tabla `reservations`.
+     - Manejo de bloqueo atómico de inventario `reserved_quantity` con `with_for_update()`.
+     - Expiración automática a las 24 horas y generación de códigos boutique amigables `RES-XXXXXXXX` y payloads QR.
+     - Suite [`backend/tests/test_cu13_reservations_with_expiration.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu13_reservations_with_expiration.py) verificada con **7/7 pruebas aprobadas (100%)**.
+   - **Frontend Web PWA (Angular 21):**
+     - Integración con `IdbReservationsService` en IndexedDB para guardar reservas generadas sin conexión a internet.
+     - Detección de conectividad con `NetworkStatusService` para ofrecer sincronización por lotes al reconectar.
+     - Verificación TypeScript `npx tsc --noEmit` completada con **0 errores**.
+   - **Aplicación Móvil (Flutter / Dart):**
+     - Persistencia en SQLite local (`local_catalog_db.dart`) mediante la tabla `local_pending_reservations`.
+     - Modelado de `PendingOfflineReservation` con serialización `toMap()` y `fromMap()`.
+     - En `ReservationController`: métodos `saveOfflineReservation()`, `loadPendingOffline()`, `syncAllPending()` y `deletePendingOffline()`.
+     - En `ReservationCreatePage`: acción para guardar reserva offline en modo desconectado.
+     - En `ReservationsPage`: bandeja Outbox ámbar con listado de reservas pendientes de sincronizar, botón de sincronización masiva y renderizado de código de reserva en cada card.
+     - Suites de pruebas Flutter [`test/reservation_models_test.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/test/reservation_models_test.dart), [`test/reservation_controller_test.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/test/reservation_controller_test.dart) y [`test/reservations_page_test.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/test/reservations_page_test.dart) pasando **8/8 pruebas (100%)**.
 
-2. **Políticas de Negocio Inviolables y Consentimiento en Frontend ([`docs/BUSINESS_POLICIES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/BUSINESS_POLICIES.md)):**
-   - **Gobernanza SaaS vs Gobernanza Tenant:**
-     - **Superadmin (SaaS):** Regula los 3 planes de suscripción (Básico, Profesional, Empresarial), cuotas de sucursales, backup escalonado y mensualidades no reembolsables.
-     - **Tenant Admin (Empresa):** Regula las políticas comerciales de su boutique (porcentaje de retención de devoluciones entre 20% y 50%, ventana de días para cambios, modalidad de reembolso en efectivo vs Nota de Crédito digital).
-   - **Nota de Crédito Digital (`NC-YYYYMMDD-XXXX`):** Definida como un comprobante contable al portador registrado en backend con saldo a favor para el cliente tras una devolución física, protegiendo el flujo de caja del negocio y fidelizando futuras compras.
-   - **Checkboxes de Aceptación Obligatoria:** Formulados formalmente para suscripción de tenants y checkout de clientes ("He leído y acepto los Términos y Condiciones...").
+2. **Blindaje Total de CU04 (Cuotas de Sucursales y Desactivación Defensiva):**
+   - Borrado físico de sucursales con dependencias FK conmuta a soft-delete defensivo (`is_active = False`, `is_default = False`), liberando la cuota del plan al instante.
+   - Suite [`backend/tests/test_cu04_branch_quota_release.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu04_branch_quota_release.py) verificada con **6/6 pruebas PASSED**.
 
-3. **Ajuste de Límites de Planes Comerciales en Código Fuente:**
-   - **Plan Básico:** Expandido de 2 a **3 sucursales activas** (`max_branches = 3`), sin IA, a Bs 29/mes.
-   - **Plan Profesional:** Hasta **10 sucursales activas** (`max_branches = 10`), con IA Gemini y Analítica predictiva, a Bs 99/mes.
-   - **Plan Empresarial:** Hasta **25 sucursales activas** (`max_branches = 25`), IA sin límites y backup continuo point-in-time, a Bs 199/mes.
-   - Archivos ajustados:
-     - [`backend/app/packages/p0_saas_plataforma/routes/plan_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/routes/plan_routes.py)
-     - [`backend/app/packages/p0_saas_plataforma/services/tenant_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/services/tenant_service.py)
-     - [`backend/app/packages/p0_saas_plataforma/services/quota_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/services/quota_service.py)
-     - [`backend/seed_saas.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/seed_saas.py)
-
-4. **Documentación Sincronizada y Congelada:**
-   - [`docs/ACTORS_AND_USE_CASES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ACTORS_AND_USE_CASES.md): Matriz completa de 25 CUs, ICONIX, diagramas de robustez y secuencia.
-   - [`docs/BUSINESS_POLICIES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/BUSINESS_POLICIES.md): Políticas SaaS y de tenants de prueba (`Boutique Elegance` y `Moda Urbana`).
-   - [`docs/ai/DECISIONS_LOG.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ai/DECISIONS_LOG.md): Registro 15 asentado.
-   - [`docs/ai/IMPLEMENTATION_PHASES.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ai/IMPLEMENTATION_PHASES.md): Desglose de 3 presentaciones.
-   - [`docs/ai/CURRENT_STATE.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ai/CURRENT_STATE.md): Estado por casos de uso.
-   - [`docs/ai/NEXT_STEPS.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/ai/NEXT_STEPS.md): Hoja de ruta para el bloque offline de la 2da presentación.
+3. **Blindaje Total de CU10 (Liberación Automática de Stock por Expiración de Reservas):**
+   - Implementado background worker continuo `_expiration_worker_loop` en `main.py` (ejecución periódica cada 60s) y función unificada `run_expiration_sweep(db)` en `expiration_service.py`.
+   - Endpoint administrativo `POST /api/reservations/sweeper` para auditoría y ejecución forzada por administrador/encargado.
+   - Liberación automática e inmediata de `reserved_quantity` a stock disponible general ante reservas con `expires_at <= now()`.
+   - Reemplazo de `joinedload` por `selectinload` para compatibilidad de bloqueos `FOR UPDATE` en PostgreSQL.
+   - Suite [`backend/tests/test_cu10_reservation_expiration_sweeper.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu10_reservation_expiration_sweeper.py) verificada con **4/4 pruebas PASSED**.
 
 ---
 
 ### 2. Estado de Verificación y Compilación
 * **Base de Datos:** Migración Alembic `0044` (Head Maestro). Esquema relacional congelado para los 25 CUs.
-* **Backend:** Rutas y servicios de SaaS ajustados con cuota de 3 sucursales y 3 planes comerciales.
-* **Frontend:** PWA con IndexedDB para catálogo y reservas offline compilando limpiamente.
+* **Backend:** 7 paquetes canónicos de dominio; suite de reservas con expiración pasando 7/7.
+* **Frontend:** Angular 21 PWA con IndexedDB; 0 errores de tipado en TypeScript.
+* **Mobile:** Flutter con SQLite y Dio; 8/8 pruebas unitarias y de widgets aprobadas.
 
 ---
 
 ### 3. Próximo Paso Inmediato
-Comenzar la implementación de la suite Offline de la Presentación 2:
-1. **`CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)`**
-2. **`CU12: Resolver Conflictos y Sincronizar Reservas Offline (Idempotencia)`**
-3. **`CU13: Registrar Ventas POS Offline con UUIDv4 Local y Contingencia de Stock`**
-4. **`CU14: Gestionar Cola de Salida Offline (Outbox Pattern) y Monitoreo de Sincronización`**
-5. **`CU15: Sincronizar Ventas Offline en Lote con Idempotencia Transaccional`**
+Avanzar con el siguiente caso de uso de la Presentación 2:
+1. **`CU12: Atender y Resolver Conflictos de Reservas Expiradas`**
+   - Tarea periódica de expiración y endpoints de resolución de reservas vencidas.
+   - Panel web de encargado de sucursal para devolver prendas no retiradas al stock disponible.

@@ -11,6 +11,7 @@ from app.packages.p4_gestion_compras_reservas.schemas.reservation_schema import 
     ReservationCreate,
     ReservationDecisionRequest,
 )
+from app.packages.p4_gestion_compras_reservas.services.expiration_service import run_expiration_sweep
 from app.packages.p4_gestion_compras_reservas.services.reservation_service import (
     attend_reservation,
     cancel_branch_reservation,
@@ -221,3 +222,16 @@ async def cancel_branch_reservation_route(
     if not reservation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Reserva con id {reservation_id} no encontrada")
     return response(status_code=200, message="Reserva cancelada por sucursal exitosamente", data=reservation)
+
+
+@router.post("/sweeper", summary="Ejecutar barrido forzado de reservas y órdenes vencidas para liberar existencias")
+async def run_reservations_sweeper_route(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_roles(RolEnum.administrador, RolEnum.encargado)),
+):
+    sweep_results = run_expiration_sweep(db)
+    return response(
+        status_code=status.HTTP_200_OK,
+        message="Barrido de reservas vencidas ejecutado exitosamente",
+        data=sweep_results,
+    )

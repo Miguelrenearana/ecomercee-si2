@@ -9,8 +9,8 @@
 
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
-| **Implementados y Verificados (100%)** | **10 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10` |
-| **En Curso / Inmediatos (Presentación 2)** | **8 CUs** | `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18` |
+| **Implementados y Verificados (100%)** | **11 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11` |
+| **En Curso / Inmediatos (Presentación 2)** | **7 CUs** | `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18` |
 | **Programados (Presentación 3)** | **7 CUs** | `CU19`, `CU20`, `CU21`, `CU22`, `CU23`, `CU24`, `CU25` |
 
 ---
@@ -23,8 +23,8 @@
    Catálogo de 3 planes (Básico máx. 3 sucursales, Profesional máx. 10 sucursales, Empresarial ilimitado), timestamps de auditoría, Downgrade Guard en `/api/saas/subscriptions` y modal reactivo de cambio de plan.
 3. **`CU03: Iniciar Sesión Multitenant con JWT y Claims de Tenant` [Modificado 1P - 100%]:**  
    Token JWT con inyección obligatoria de `sub`, `rol`, `tenant_id` y `branch_id`. Login desacoplado de dependencias externas en `environment.ts` y selector de 2 actores (`Clientes` vs `Administrativos`).
-4. **`CU04: Gestionar Sucursales Bajo Límites del Plan` [Modificado 1P - 100%]:**  
-   Migración `0040` (geolocalización y auditoría), endpoints `/api/branches/quota`, validación estricta de cuota comercial del plan en backend y UI Angular con widget de progreso reactivo y alertas de capacidad.
+4. **`CU04: Gestionar Sucursales Bajo Límites del Plan` [Modificado 1P - 100% Blindado]:**  
+   Migración `0040` (geolocalización y auditoría), endpoints `/api/branches/quota`, validación estricta de cuota comercial del plan (3 en Básico, 10 en Pro, 25 en Empresarial), soft-delete defensivo ante registros históricos con dependencias FK, y liberación reactiva e inmediata de cuota sin requerir reinicio del servidor. Suite `test_cu04_branch_quota_release.py` verificada con 6/6 pruebas aprobadas.
 5. **`CU05: Gestionar Prendas y Variantes de Precio por Talla` [Modificado 1P - 100%]:**  
    CRUD de prendas en `p2_gestion_productos_catalogo`, persistencia transaccional con `db.commit()`, aislamiento por `tenant_id`, matriz de variantes con precios diferenciados por talla para habilitar políticas de cambio. Suite de pruebas pasando 4/4.
 6. **`CU06: Consultar Catálogo Online con Búsqueda Facetada` [Modificado 1P - 100%]:**  
@@ -35,8 +35,10 @@
    Detección reactiva de conectividad mediante `NetworkStatusService` con conmutación transparente a caché local ante caídas de red y banner de advertencia de datos locales.
 9. **`CU09: Comprar Prendas con Stripe y Despacho Condicionado` [Modificado 1P - 100%]:**  
    Integración con Stripe Elements en Web y Stripe PaymentSheet en Móvil Flutter. Cumplimiento incondicional de la **Política de Negocio 3**: despacho bloqueado si `payment_status != 'paid'`, generación de código de rastreo formal `DSP-YYYYMMDD-XXXX` y stepper ICONIX de 5 etapas.
-10. **`CU10: Crear Reserva Online de Prendas con Vencimiento y Bloqueo` [Modificado 1P - 100%]:**  
-    Bloqueo atómico de inventario en `p4_gestion_compras_reservas` (`reserved_quantity`), código amigable `RES-XXXXXXXX`, QR digital, validación de fechas (hoy a +7 días), recordatorio de caducidad a 24h y vista boutique en Angular con tickets de reserva.
+10. **`CU10: Crear Reserva Online de Prendas con Vencimiento y Bloqueo` [Modificado 1P - 100% Blindado]:**  
+    Bloqueo atómico de inventario en `p4_gestion_compras_reservas` (`reserved_quantity`), código amigable `RES-XXXXXXXX`, QR digital, validación de fechas (hoy a +7 días), recordatorio de caducidad a 24h y vista boutique en Angular con tickets de reserva. **Blindado y Automatizado:** Background worker continuo asíncrono en `main.py` (`_expiration_worker_loop`) y endpoint administrativo `POST /api/reservations/sweeper` que auditan reservas vencidas (`expires_at <= today`), liberan de inmediato el stock bloqueado devolviéndolo a disponibilidad general y limpian reservas en carrito abandonado (15 min). Suite `test_cu10_reservation_expiration_sweeper.py` verificada con 4/4 pruebas aprobadas.
+11. **`CU11: Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)` [Nuevo 2P - 100%]:**  
+    Persistencia desconectada con UUIDv4 local (`client_reservation_id`), bandeja Outbox de reservas offline tanto en PWA Web (`IdbReservationsService` en IndexedDB) como en Mobile Flutter (`local_pending_reservations` en SQLite con `LocalCatalogDb`), sincronización reactiva al reconectar con backend `POST /reservations/` garantizando idempotencia transaccional y validación de stock. Suite de pruebas pasando 7/7 en backend y 8/8 en Flutter.
 
 ---
 

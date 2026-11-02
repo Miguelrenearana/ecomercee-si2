@@ -18,7 +18,10 @@ def get_branch_quota(db: Session, tenant_id: UUID) -> dict:
     """
     subscription = (
         db.query(Subscription)
-        .filter(Subscription.company_id == tenant_id, Subscription.status == "ACTIVA")
+        .filter(
+            Subscription.company_id == tenant_id,
+            Subscription.status.in_(["ACTIVA", "active", "trialing"]),
+        )
         .first()
     )
 
@@ -132,6 +135,9 @@ def update_branch(db: Session, branch_id: UUID, update_data: BranchUpdate, tenan
     branch.is_default = update_data.is_default
     branch.is_active = update_data.is_active
 
+    if not update_data.is_active and branch.is_default:
+        branch.is_default = False
+
     db.commit()
     db.refresh(branch)
     return branch
@@ -152,6 +158,20 @@ def delete_branch(db: Session, branch_id: UUID, tenant_id: UUID | None = None) -
         return True
     except Exception:
         db.rollback()
+        # Fallback de preservación de auditoría contable (SaaS multitenant):
+        # Si la sucursal tiene registros vinculados (inventario, ventas, reservas),
+        # PostgreSQL restringe el borrado físico por FK. En su lugar, se desactiva (soft-delete),
+        # liberando inmediatamente la cuota del plan en /api/branches/quota.
+        try:
+            branch = db.query(Branch).filter(Branch.id == branch_id).first()
+            if branch:
+                db.query(User).filter(User.branch_id == branch.id).update({User.branch_id: None}, synchronize_session=False)
+                branch.is_active = False
+                branch.is_default = False
+                db.commit()
+                return True
+        except Exception:
+            db.rollback()
         raise ValueError("No se pudo eliminar la sucursal")
 
 
@@ -167,6 +187,8 @@ def set_branch_active(db: Session, branch_id: UUID, is_active: bool, tenant_id: 
         validate_branch_quota(db, tenant_id)
 
     branch.is_active = is_active
+    if not is_active and branch.is_default:
+        branch.is_default = False
     db.commit()
     db.refresh(branch)
     return branch

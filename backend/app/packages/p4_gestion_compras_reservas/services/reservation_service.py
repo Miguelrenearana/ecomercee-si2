@@ -5,7 +5,7 @@ import logging
 from uuid import UUID
 import uuid
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.packages.p1_gestion_usuarios_acceso.models.branch import Branch
 from app.packages.p1_gestion_usuarios_acceso.models.user import User
@@ -201,7 +201,7 @@ def expire_due_reservations(db: Session):
 def expire_transferred_reservations(db: Session):
     reservations = (
         db.query(Reservation)
-        .options(joinedload(Reservation.items))
+        .options(selectinload(Reservation.items))
         .filter(Reservation.status == ReservationStatusEnum.purchase_pending, Reservation.cart_id.isnot(None))
         .with_for_update(skip_locked=True)
         .all()
@@ -455,7 +455,7 @@ def transfer_reservation_to_cart(db: Session, user_id: UUID, reservation_id: UUI
     expire_due_reservations(db)
     reservation = (
         db.query(Reservation)
-        .options(joinedload(Reservation.items))
+        .options(selectinload(Reservation.items))
         .filter(Reservation.id == reservation_id, Reservation.user_id == user_id)
         .with_for_update()
         .first()
