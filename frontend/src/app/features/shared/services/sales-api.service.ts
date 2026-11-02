@@ -3,7 +3,15 @@ import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../../../core/services/api.service';
 import { ApiResponse } from '../../../core/models/api.model';
 import { Reservation } from '../models/reservation.model';
-import { CreateSaleRequest, SaleResponse, SalesListResponse } from '../models/sale.model';
+import {
+  CreateSaleRequest,
+  ExchangeQuoteResponse,
+  GarmentExchange,
+  GarmentReturn,
+  ReturnQuoteResponse,
+  SaleResponse,
+  SalesListResponse,
+} from '../models/sale.model';
 
 @Injectable({ providedIn: 'root' })
 export class SalesApiService {
@@ -26,5 +34,47 @@ export class SalesApiService {
   searchReservation(reservationId: string, branchId?: string) {
     const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
     return this.api.get<ApiResponse<Reservation>>(`/reservations/branch/${reservationId}${query}`);
+  }
+
+  // CU17: Métodos de Cambio de Prenda
+  quoteExchange(payload: { sale_id: string; original_variant_id: string; new_variant_id: string }, branchId?: string) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ApiResponse<ExchangeQuoteResponse>>(`/exchanges/quote${query}`, payload);
+  }
+
+  processExchange(
+    payload: {
+      sale_id: string;
+      original_variant_id: string;
+      new_variant_id: string;
+      condition?: string;
+      difference_paid?: boolean;
+      payment_method?: string | null;
+      notes?: string | null;
+    },
+    branchId?: string
+  ) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ApiResponse<GarmentExchange>>(`/exchanges${query}`, payload);
+  }
+
+  // CU18: Métodos de Devolución de Prenda con Retención Operativa
+  quoteReturn(payload: { sale_id: string; variant_id: string }, branchId?: string) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ApiResponse<ReturnQuoteResponse>>(`/returns/quote${query}`, payload);
+  }
+
+  processReturn(
+    payload: {
+      sale_id: string;
+      variant_id: string;
+      condition?: string;
+      refund_method: string;
+      reason?: string | null;
+    },
+    branchId?: string
+  ) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ApiResponse<GarmentReturn>>(`/returns${query}`, payload);
   }
 }

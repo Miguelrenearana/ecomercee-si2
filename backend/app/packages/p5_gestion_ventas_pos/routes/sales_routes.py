@@ -34,7 +34,8 @@ async def list_branch_sales_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta sucursal")
 
     user_id = UUID(current_user["sub"]) if current_user.get("rol") == RolEnum.cajero.value else None
-    sales = list_sales_by_branch(db, resolved_branch_id, user_id)
+    tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
+    sales = list_sales_by_branch(db, resolved_branch_id, user_id, tenant_id=tenant_id)
     return response(status_code=200, message="Ventas de sucursal obtenidas exitosamente", data=sales)
 
 
@@ -55,7 +56,8 @@ async def get_sale_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta sucursal")
 
     user_id = UUID(current_user["sub"]) if current_user.get("rol") == RolEnum.cajero.value else None
-    sale = get_sale(db, resolved_branch_id, sale_id, user_id)
+    tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
+    sale = get_sale(db, resolved_branch_id, sale_id, user_id, tenant_id=tenant_id)
     if not sale:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Venta con id {sale_id} no encontrada")
     return response(status_code=200, message="Venta obtenida exitosamente", data=sale)
@@ -66,7 +68,7 @@ async def create_sale_route(
     payload: SaleCreate,
     db: Session = Depends(get_db),
     current_branch_id: UUID | None = Depends(get_current_branch_id),
-    current_user: dict = Depends(require_roles(RolEnum.cajero)),
+    current_user: dict = Depends(require_roles(RolEnum.cajero, RolEnum.encargado, RolEnum.administrador)),
 ):
     if current_branch_id is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="branch_id es requerido")
@@ -74,8 +76,9 @@ async def create_sale_route(
     if payload.branch_id is not None and payload.branch_id != current_branch_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta sucursal")
 
+    tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
     try:
-        sale = create_sale(db, UUID(current_user["sub"]), payload, current_branch_id)
+        sale = create_sale(db, UUID(current_user["sub"]), payload, current_branch_id, tenant_id=tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return response(status_code=status.HTTP_201_CREATED, message="Venta registrada exitosamente", data=sale)

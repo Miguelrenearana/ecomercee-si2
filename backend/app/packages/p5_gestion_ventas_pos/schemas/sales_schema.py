@@ -28,10 +28,14 @@ class SaleCreate(BaseModel):
     reservation_id: UUID | None = None
     payment_method: PaymentMethodEnum = PaymentMethodEnum.cash
     cash_reference: str | None = None
+    client_sale_id: UUID | None = None
+    is_offline: bool = False
     items: list[SaleItemCreate] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_items_or_reservation(self):
+        if self.is_offline and self.payment_method != PaymentMethodEnum.cash:
+            raise ValueError("Por política de seguridad contable (Política 5), las ventas en modo offline deben ser exclusivamente en efectivo (cash).")
         if self.reservation_id:
             raise ValueError("CU18 no permite ventas asociadas a reservas")
         if self.payment_method != PaymentMethodEnum.cash:
@@ -70,6 +74,9 @@ class SaleRead(BaseModel):
     type: SaleTypeEnum
     user_id: UUID
     reservation_id: UUID | None = None
+    client_sale_id: UUID | None = None
+    is_offline: bool = False
+    synced_at: datetime | None = None
     status: SaleStatusEnum
     payment_method: PaymentMethodEnum
     payment_status: PaymentStatusEnum

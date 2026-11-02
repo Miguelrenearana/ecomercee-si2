@@ -40,18 +40,18 @@
   - *Estado:* 100% Implementado (Backend `p4` con `client_reservation_id` e idempotencia, PWA Angular con `IdbReservationsService` y Outbox offline, Flutter con `LocalCatalogDb` tabla SQLite `local_pending_reservations`, tray de reservas pendientes y sincronización).
 - [x] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** [Nuevo 2P]
   - *Estado:* 100% Implementado (Backend `p4` con endpoints `/reservations/branch/conflicts` y `/resolve-conflict`, validación de inventario en percha, reactivación con re-bloqueo +24h/48h, sustitución de variante, anulación con nota de auditoría, frontend PWA en `/app/encargado/reservations` con bandeja de conflictos reactiva y modal de resolución, suite de 7/7 pruebas unitarias pasando).
-- [ ] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]
-  - *Criterio de éxito:* Cobro forzado exclusivamente en EFECTIVO (Política 5), emisión de ticket de contingencia con UUIDv4 y rebaja local en caché.
+- [x] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p5_gestion_ventas_pos` con cumplimiento estricto de Política 5 de solo efectivo, idempotencia por `client_sale_id`, PWA Angular `/app/cajero/caja` con bandeja local IndexedDB, calculadora de cambio en vivo, bloqueo de pagos electrónicos en desconexión y modal de ticket térmico `TCK-OFF-XXXXXX` con hash de contingencia UUIDv4. Suite `test_cu13_offline_pos_sales.py` 5/5 PASSED).
 - [ ] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** [Nuevo 2P]
   - *Criterio de éxito:* Vista outbox con listado de tickets en estado `PENDIENTE_SYNC`, badge ámbar y botón para forzar sincronización.
 - [ ] **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`)** [Nuevo 2P]
   - *Criterio de éxito:* Endpoint `/api/sales/offline/batch-sync`; verificación contra `sync_operations` para evitar duplicar ventas o descontar stock dos veces.
 - [ ] **`CU16` – Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock** [Nuevo 2P]
   - *Criterio de éxito:* Detección de ventas offline con stock central agotado; pantalla para que el Encargado resuelva (stock negativo, sustituto o nota de crédito).
-- [ ] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** [Nuevo 2P]
-  - *Criterio de éxito:* Cumplimiento de la Política 1 (abono obligatorio de diferencia $\Delta$) e inspección de etiqueta textil intacta (rechazo si está usada).
-- [ ] **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** [Nuevo 2P]
-  - *Criterio de éxito:* Cumplimiento de la Política 2 (retención 20%-50%, reembolso neto 50%-80%) y emisión de Nota de Crédito digital (`NC-YYYYMMDD-XXXX`).
+- [x] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p5_gestion_ventas_pos` con endpoints `/api/exchanges/quote` y `/api/exchanges`, aplicación estricta de Política 1 de abono obligatorio de diferencia $\Delta > 0$, validación de etiqueta intacta, swap atómico de stock e historial en `garment_exchanges`. Suite `test_cu17_garment_exchange.py` 8/8 PASSED).
+- [x] **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p5_gestion_ventas_pos` con endpoints `/api/returns/quote` y `/api/returns`, cumplimiento estricto de Política 2 con retención del 20% al 50% y reembolso neto del 50% al 80%, condición de prenda intacta con etiqueta, reingreso físico atómico de stock `with_for_update`, emisión de Nota de Crédito digital `NC-YYYYMMDD-XXXX` y efectivo. Frontend Web PWA en `/app/cajero/caja` con cotización y comprobante modal. Suite `test_cu18_garment_return.py` 8/8 PASSED).
 
 ---
 

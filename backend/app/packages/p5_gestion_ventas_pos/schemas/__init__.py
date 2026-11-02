@@ -14,6 +14,14 @@ from app.packages.p5_gestion_ventas_pos.schemas.exchange_schema import (
     GarmentExchangeCreate,
     GarmentExchangeResponse,
 )
+# logica del CU18: Exportación de esquemas de Devolución de Prenda
+from app.packages.p5_gestion_ventas_pos.schemas.return_schema import (
+    GarmentReturnCreate,
+    GarmentReturnResponse,
+    RefundMethodEnum,
+    ReturnQuoteRequest,
+    ReturnQuoteResponse,
+)
 
 __all__ = [
     "SaleStatusEnum",
@@ -27,4 +35,9 @@ __all__ = [
     "ExchangeQuoteResponse",
     "GarmentExchangeCreate",
     "GarmentExchangeResponse",
+    "RefundMethodEnum",
+    "ReturnQuoteRequest",
+    "ReturnQuoteResponse",
+    "GarmentReturnCreate",
+    "GarmentReturnResponse",
 ]

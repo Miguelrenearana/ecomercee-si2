@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -107,6 +108,9 @@ def _serialize_sale(db: Session, sale: Sale) -> SaleRead:
             "type": SaleTypeEnum.in_person,
             "user_id": sale.user_id,
             "reservation_id": sale.reservation_id,
+            "client_sale_id": sale.client_sale_id,
+            "is_offline": sale.is_offline or False,
+            "synced_at": sale.synced_at,
             "status": sale.status,
             "payment_method": sale.payment_method,
             "payment_status": sale.payment_status,
@@ -150,6 +154,7 @@ def _create_sale_from_items(
     user_id: UUID,
     payload: SaleCreate,
     normalized_items: dict[UUID, int],
+    tenant_id: UUID | None = None,
 ):
     reservation = None
     reservation_should_adjust_inventory = False
@@ -160,9 +165,13 @@ def _create_sale_from_items(
         reservation_should_adjust_inventory = reservation.status in {ReservationStatusEnum.pending, ReservationStatusEnum.confirmed}
 
     sale = Sale(
+        tenant_id=tenant_id,
         branch_id=branch_id,
         user_id=user_id,
         reservation_id=payload.reservation_id,
+        client_sale_id=payload.client_sale_id,
+        is_offline=payload.is_offline,
+        synced_at=datetime.now(timezone.utc) if payload.is_offline else None,
         status=SaleStatusEnum.completed,
         payment_method=payload.payment_method,
         payment_status=PaymentStatusEnum.paid,
@@ -203,7 +212,7 @@ def _create_sale_from_items(
             if quantity > available:
                 raise ValueError("No hay stock suficiente para completar la venta")
             inventory.quantity = (inventory.quantity or 0) - quantity
-            movement_note = "Venta presencial"
+            movement_note = "Venta presencial offline" if payload.is_offline else "Venta presencial"
 
         original_price = Decimal(str(variant.price))
         unit_price = discounted_price(original_price, variant.product.discount_type, variant.product.discount_value)
@@ -212,6 +221,7 @@ def _create_sale_from_items(
         subtotal += original_price * quantity
         db.add(
             SaleItem(
+                tenant_id=tenant_id,
                 sale_id=sale.id,
                 variant_id=variant_id,
                 quantity=quantity,
@@ -249,11 +259,19 @@ def _create_sale_from_items(
     return sale
 
 
-def create_sale(db: Session, user_id: UUID, payload: SaleCreate, branch_id: UUID):
+def create_sale(db: Session, user_id: UUID, payload: SaleCreate, branch_id: UUID, tenant_id: UUID | None = None):
+    # Idempotencia: Si ya existe una venta con este client_sale_id, retornarla sin duplicar
+    if payload.client_sale_id:
+        existing = db.query(Sale).filter(Sale.client_sale_id == payload.client_sale_id).first()
+        if existing:
+            if tenant_id and existing.tenant_id and existing.tenant_id != tenant_id:
+                raise ValueError("Acceso denegado: este comprobante pertenece a otra empresa")
+            return _serialize_sale(db, existing).model_dump()
+
     try:
         normalized_items = _resolve_items(db, payload, branch_id)
         with db.begin_nested():
-            sale = _create_sale_from_items(db, branch_id, user_id, payload, normalized_items)
+            sale = _create_sale_from_items(db, branch_id, user_id, payload, normalized_items, tenant_id=tenant_id)
         db.commit()
         db.refresh(sale)
         for variant_id in normalized_items:
@@ -270,8 +288,10 @@ def create_sale(db: Session, user_id: UUID, payload: SaleCreate, branch_id: UUID
         raise
 
 
-def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UUID | None = None):
+def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UUID | None = None, tenant_id: UUID | None = None):
     query = db.query(Sale)
+    if tenant_id is not None:
+        query = query.filter(Sale.tenant_id == tenant_id)
     if branch_id is not None:
         query = query.filter(Sale.branch_id == branch_id)
     if user_id is not None:
@@ -279,6 +299,8 @@ def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UU
     sales = [_serialize_sale(db, sale).model_dump() for sale in query.order_by(Sale.created_at.desc()).all()]
 
     orders_query = db.query(Order).filter(Order.status == "paid", Order.pickup_branch_id.is_not(None))
+    if tenant_id is not None:
+        orders_query = orders_query.filter(Order.tenant_id == tenant_id)
     if branch_id is not None:
         orders_query = orders_query.filter(Order.pickup_branch_id == branch_id)
     orders = []
@@ -291,6 +313,9 @@ def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UU
             "type": SaleTypeEnum.online,
             "user_id": order.user_id,
             "reservation_id": None,
+            "client_sale_id": None,
+            "is_offline": False,
+            "synced_at": None,
             "status": SaleStatusEnum.completed,
             "payment_method": order.payment_method,
             "payment_status": order.payment_status,
@@ -314,8 +339,10 @@ def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UU
     return sorted(sales + orders, key=lambda sale: sale["created_at"], reverse=True)
 
 
-def get_sale(db: Session, branch_id: UUID | None, sale_id: UUID, user_id: UUID | None = None):
+def get_sale(db: Session, branch_id: UUID | None, sale_id: UUID, user_id: UUID | None = None, tenant_id: UUID | None = None):
     query = db.query(Sale).filter(Sale.id == sale_id)
+    if tenant_id is not None:
+        query = query.filter(Sale.tenant_id == tenant_id)
     if branch_id is not None:
         query = query.filter(Sale.branch_id == branch_id)
     if user_id is not None:

@@ -1,148 +1,658 @@
-<section class="space-y-5">
-  <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+<section class="space-y-6">
+  <!-- Header de Caja y Estado de Conectividad -->
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
     <div>
-      <h1 class="text-2xl font-semibold">Caja</h1>
-      <p class="text-sm text-slate-500">Venta presencial, búsqueda rápida y comprobante inmediato.</p>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Punto de Venta (POS) — Caja de Sucursal</h1>
+        @if (isOfflineEffective()) {
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 border border-amber-300">
+            <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Modo Contingencia Offline
+          </span>
+        } @else {
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Servidor Conectado
+          </span>
+        }
+      </div>
+      <p class="text-xs sm:text-sm text-slate-500 mt-1">
+        Operador: <strong class="text-slate-800">{{ cashierName() }}</strong> · Sucursal: <strong class="text-slate-800">{{ branchName() }}</strong>
+      </p>
     </div>
-    <div class="flex gap-2">
-      <button hlmBtn type="button" variant="outline" (click)="searchProducts()" [disabled]="loadingProducts()">Actualizar productos</button>
+
+    <!-- Acciones de Cabecera y Herramientas Offline -->
+    <div class="flex flex-wrap items-center gap-2">
+      @if (pendingOutboxCount() > 0) {
+        <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
+          <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
+          {{ pendingOutboxCount() }} en Outbox
+        </span>
+      }
+
+      <button
+        hlmBtn
+        type="button"
+        variant="outline"
+        size="sm"
+        class="text-xs transition hover:bg-slate-100"
+        (click)="toggleSimulatedOffline()"
+        [ngClass]="simulatedOffline() ? 'border-amber-500 text-amber-800 font-bold bg-amber-50' : 'text-slate-600'"
+      >
+        <svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-12.728 0m0 0l2.829-2.829m-2.829 2.829L3 21m2.829-5.657a5 5 0 010-7.072m0 0l2.829 2.829" />
+        </svg>
+        {{ simulatedOffline() ? 'Restablecer Online' : 'Simular Offline' }}
+      </button>
+
+      <button hlmBtn type="button" variant="outline" size="sm" (click)="searchProducts()" [disabled]="loadingProducts()" class="text-xs">
+        <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Actualizar Catálogo
+      </button>
+
+      <!-- Botón de Devolución de Prenda (CU18) -->
+      <button
+        hlmBtn
+        type="button"
+        variant="outline"
+        size="sm"
+        class="text-xs border-rose-200 text-rose-800 bg-rose-50/70 hover:bg-rose-100 transition"
+        (click)="openReturnModal()"
+      >
+        <svg class="mr-1.5 h-3.5 w-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        </svg>
+        Devolución de Prenda
+      </button>
     </div>
   </header>
 
-  <section class="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-    <div class="space-y-4">
-       <section hlmCard class="bg-white shadow-sm">
-        <div hlmCardContent class="space-y-4 p-4">
-          <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-            <div class="space-y-2">
-              <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Buscar producto</label>
-              <input hlmInput type="text" [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" placeholder="Nombre, SKU o colección" />
-            </div>
-            <div class="flex items-end">
-              <button hlmBtn type="button" (click)="searchProducts()" [disabled]="loadingProducts()" class="w-full md:w-auto">Buscar</button>
-            </div>
-          </div>
-
+  <!-- Banner de Política 5: Modo Desconectado Activo -->
+  @if (isOfflineEffective()) {
+    <div class="rounded-xl border border-amber-300 bg-amber-50/80 p-4 text-amber-900 shadow-sm animate-fadeIn">
+      <div class="flex items-start gap-3">
+        <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-700" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <div class="text-xs sm:text-sm">
+          <span class="font-bold">Política Inviolable de Contingencia (P-Ten-05):</span> La terminal se encuentra operando sin conexión al servidor central. Los cobros electrónicos (Stripe / QR) quedan bloqueados por seguridad contable. La venta se asienta de contado en <strong class="underline font-bold">EFECTIVO</strong>, rebaja el stock local y genera un comprobante de contingencia con identificador <strong class="font-mono">UUIDv4</strong> para sincronización central posterior (CU15).
         </div>
-      </section>
-
-       <section hlmCard class="bg-white shadow-sm">
-        <div hlmCardContent class="space-y-4 p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-lg font-semibold">Resultados</h2>
-              <p class="text-sm text-slate-500">Toca una variante para agregarla a la venta.</p>
-            </div>
-            <span class="text-xs text-slate-500">{{ products().length }} productos</span>
-          </div>
-
-          <div class="space-y-3">
-            @for (product of products(); track product.id) {
-              <article class="rounded-xl border border-slate-200 p-4">
-                 <div class="overflow-x-auto">
-                   <table class="w-full text-left text-sm">
-                     <thead class="text-xs uppercase tracking-wide text-slate-500">
-                       <tr><th class="pb-2">Producto</th><th class="pb-2">SKU</th><th class="pb-2">Precio</th><th class="pb-2 text-right">Agregar</th></tr>
-                     </thead>
-                     <tbody>
-                   @for (variant of product.variants ?? []; track variant.id) {
-                     <tr class="border-t border-slate-100">
-                        <td class="py-2"><div class="flex items-center gap-2"><img [src]="variant.image_url ?? product.image_url ?? 'assets/login-fashion.png'" [alt]="product.name" class="h-10 w-10 rounded object-cover" /><span>{{ product.name }}</span></div></td>
-                       <td class="py-2 text-slate-500">{{ variant.sku }}</td>
-                       <td class="py-2 font-medium">{{ variant.price }}</td>
-                       <td class="py-2 text-right"><button hlmBtn type="button" variant="outline" class="h-8 w-8 px-0" (click)="addVariant(product, variant)" [attr.aria-label]="'Agregar ' + variant.sku">+</button></td>
-                     </tr>
-                   }
-                     </tbody>
-                   </table>
-                 </div>
-              </article>
-            } @empty {
-              <div class="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">No hay resultados para la búsqueda actual.</div>
-            }
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
+  }
 
-    <aside class="space-y-4 xl:sticky xl:top-6 xl:self-start">
-      <section hlmCard class="bg-white shadow-sm">
-        <div hlmCardContent class="space-y-4 p-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Venta</h2>
-            <button hlmBtn type="button" variant="outline" (click)="clearSale()">Limpiar</button>
-          </div>
-
-          <div class="space-y-2">
-            @for (item of selectedItems(); track item.variant_id) {
-              <div class="rounded-xl border border-slate-200 p-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <p class="font-medium text-slate-900">{{ item.product_name }}</p>
-                    <p class="text-xs text-slate-500">{{ item.variant_sku }} · {{ item.size_name ?? 'Sin talla' }} · {{ item.color_name ?? 'Sin color' }}</p>
-                  </div>
-                  <button hlmBtn type="button" variant="ghost" class="text-xs" (click)="removeItem(item.variant_id)">Quitar</button>
-                </div>
-                <div class="mt-3 flex items-center justify-between gap-2">
-                  <div class="flex items-center gap-2">
-                    <button hlmBtn type="button" variant="outline" class="h-8 w-8 px-0" (click)="decreaseItem(item.variant_id)">-</button>
-                    <span class="min-w-8 text-center text-sm font-medium">{{ item.quantity }}</span>
-                    <button hlmBtn type="button" variant="outline" class="h-8 w-8 px-0" (click)="increaseItem(item.variant_id)">+</button>
-                  </div>
-                  <span class="text-sm font-semibold">{{ lineTotal(item) }}</span>
-                </div>
-              </div>
-            } @empty {
-              <div class="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">Aún no agregaste items.</div>
-            }
-          </div>
-
-          <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
-             <div class="flex items-center justify-between text-sm"><span>Subtotal</span><span>{{ subtotal() }}</span></div>
-             <div class="flex items-center justify-between text-sm"><span>Descuento</span><span>-{{ discount() }}</span></div>
-             <div class="flex items-center justify-between text-sm"><span>Total</span><span class="font-medium">{{ total() }}</span></div>
-          </div>
-
-          <div class="space-y-3 rounded-xl border border-slate-200 p-4">
-            <p class="text-sm font-medium text-slate-700">Pago en efectivo</p>
-            <div class="space-y-2">
-              <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Referencia de caja</label>
-              <input hlmInput type="text" [value]="cashReference()" (input)="cashReference.set($any($event.target).value)" placeholder="Opcional" />
+  <!-- Layout Principal de Caja: Catálogo (Izquierda) + Panel de Cobro (Derecha) -->
+  <section class="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+    <!-- COLUMNA IZQUIERDA: Búsqueda y Catálogo de Prendas -->
+    <div class="space-y-4">
+      <section hlmCard class="border-slate-200/80 bg-white shadow-sm">
+        <div hlmCardContent class="p-4">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <input
+                hlmInput
+                type="text"
+                [value]="searchTerm()"
+                (input)="searchTerm.set($any($event.target).value)"
+                (keyup.enter)="searchProducts()"
+                placeholder="Buscar prenda por nombre, código SKU o categoría..."
+                class="w-full text-sm pl-9"
+              />
+              <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
-
-             <button hlmBtn type="button" class="w-full" (click)="submitSale()" [disabled]="submitting() || !selectedItems().length">
-              {{ submitting() ? 'Procesando...' : 'Confirmar venta' }}
+            <button hlmBtn type="button" class="bg-slate-900 text-white hover:bg-slate-800" (click)="searchProducts()" [disabled]="loadingProducts()">
+              Buscar
             </button>
           </div>
         </div>
       </section>
 
-       @if (lastSale()) {
-         <section hlmCard class="receipt-print bg-white shadow-sm">
-          <div hlmCardContent class="space-y-3 p-4">
-            <div>
-              <p class="text-xs uppercase tracking-wide text-slate-500">Comprobante</p>
-              <p class="text-lg font-semibold text-slate-900">{{ saleLabel() }}</p>
-            </div>
-            <div class="rounded-xl p-3 text-sm" [ngClass]="saleStatusClass()">
-              Estado: {{ lastSale()?.payment_status }}
-            </div>
-             <div class="grid grid-cols-2 gap-2 text-sm">
-              <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Sucursal</p><p class="font-medium">{{ lastSale()?.branch_name }}</p></div>
-              <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Total</p><p class="font-medium">{{ lastSale()?.total_amount }}</p></div>
-              <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Medio</p><p class="font-medium">{{ lastSale()?.payment_method }}</p></div>
-              <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Items</p><p class="font-medium">{{ lastSale()?.items?.length ?? 0 }}</p></div>
-             </div>
-             <div class="space-y-2 border-t pt-3 text-sm">
-               @for (item of lastSale()?.items ?? []; track item.id) {
-                 <div class="flex justify-between gap-3"><span>{{ item.quantity }} x {{ item.product_name }}</span><span>{{ item.line_total }}</span></div>
-               }
-             </div>
-             <button hlmBtn type="button" variant="outline" class="w-full print:hidden" (click)="printReceipt()">Imprimir comprobante</button>
-           </div>
-         </section>
-       }
+      <!-- Tabla de Prendas y Variantes Disponibles -->
+      <section hlmCard class="border-slate-200/80 bg-white shadow-sm">
+        <div hlmCardContent class="space-y-3 p-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700">Catálogo de Prendas en Sucursal</h2>
+            <span class="text-xs text-slate-400 font-mono">{{ products().length }} prendas encontradas</span>
+          </div>
 
+          <div class="space-y-3">
+            @for (product of products(); track product.id) {
+              <article class="rounded-xl border border-slate-200 p-3 hover:border-slate-300 transition-colors">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-3">
+                    <img
+                      [src]="product.image_url ?? 'assets/login-fashion.png'"
+                      [alt]="product.name"
+                      class="h-10 w-10 rounded-lg object-cover border border-slate-200"
+                    />
+                    <div>
+                      <h3 class="font-bold text-slate-900 text-sm">{{ product.name }}</h3>
+                      <p class="text-xs text-slate-400">{{ product.category_name ?? 'Moda General' }}</p>
+                    </div>
+                  </div>
+                  @if (product.discount_value) {
+                    <span class="rounded bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700">
+                      Oferta -{{ product.discount_value }}%
+                    </span>
+                  }
+                </div>
+
+                <!-- Variantes de la Prenda -->
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th class="px-2.5 py-1.5 rounded-l">SKU</th>
+                        <th class="px-2.5 py-1.5">Talla / Color</th>
+                        <th class="px-2.5 py-1.5 text-right">Precio</th>
+                        <th class="px-2.5 py-1.5 text-right rounded-r">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      @for (variant of product.variants ?? []; track variant.id) {
+                        <tr class="hover:bg-slate-50/60 transition">
+                          <td class="px-2.5 py-2 font-mono font-medium text-slate-700">{{ variant.sku }}</td>
+                          <td class="px-2.5 py-2 text-slate-600">
+                            {{ variant.size_name ?? 'Estándar' }} · {{ variant.color_name ?? 'Único' }}
+                          </td>
+                          <td class="px-2.5 py-2 text-right font-bold text-slate-900">
+                            Bs {{ variant.price }}
+                          </td>
+                          <td class="px-2.5 py-2 text-right">
+                            <button
+                              hlmBtn
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              class="h-7 px-3 text-xs font-semibold bg-white hover:bg-slate-900 hover:text-white transition"
+                              (click)="addVariant(product, variant)"
+                            >
+                              + Agregar
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            } @empty {
+              <div class="rounded-xl border border-dashed border-slate-200 p-8 text-center text-slate-400 text-sm">
+                No se encontraron prendas con el filtro especificado.
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- COLUMNA DERECHA: Carrito de Venta y Terminal de Cobro -->
+    <aside class="space-y-4 xl:sticky xl:top-6 xl:self-start">
+      <section hlmCard class="border-slate-200/80 bg-white shadow-sm">
+        <div hlmCardContent class="space-y-4 p-5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900">Carrito de Caja</h2>
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                {{ selectedItems().length }}
+              </span>
+            </div>
+            @if (selectedItems().length > 0) {
+              <button hlmBtn type="button" variant="ghost" size="sm" class="text-xs text-rose-600 hover:bg-rose-50" (click)="clearSale()">
+                Vaciar
+              </button>
+            }
+          </div>
+
+          <!-- Listado de Artículos en Carrito -->
+          <div class="max-h-60 overflow-y-auto space-y-2.5 pr-1">
+            @for (item of selectedItems(); track item.variant_id) {
+              <div class="rounded-xl border border-slate-200/90 bg-slate-50/50 p-3 text-xs">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <p class="font-bold text-slate-900">{{ item.product_name }}</p>
+                    <p class="text-[11px] text-slate-500 font-mono">{{ item.variant_sku }} · {{ item.size_name ?? 'S/T' }}</p>
+                  </div>
+                  <button type="button" class="text-slate-400 hover:text-rose-600" (click)="removeItem(item.variant_id)">
+                    ✕
+                  </button>
+                </div>
+
+                <div class="mt-2.5 flex items-center justify-between">
+                  <div class="flex items-center rounded-lg border border-slate-300 bg-white">
+                    <button type="button" class="px-2 py-1 text-slate-600 hover:bg-slate-100" (click)="decreaseItem(item.variant_id)">-</button>
+                    <span class="px-3 py-1 font-bold text-slate-900 font-mono">{{ item.quantity }}</span>
+                    <button type="button" class="px-2 py-1 text-slate-600 hover:bg-slate-100" (click)="increaseItem(item.variant_id)">+</button>
+                  </div>
+                  <p class="font-bold text-sm text-slate-900">Bs {{ lineTotal(item) }}</p>
+                </div>
+              </div>
+            } @empty {
+              <div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-slate-400 text-xs">
+                Seleccione prendas del catálogo para iniciar el cobro.
+              </div>
+            }
+          </div>
+
+          <!-- Resumen de Totales -->
+          <div class="space-y-1.5 rounded-xl bg-slate-900 p-4 text-white">
+            <div class="flex justify-between text-xs text-slate-300">
+              <span>Subtotal:</span>
+              <span>Bs {{ subtotal() }}</span>
+            </div>
+            <div class="flex justify-between text-xs text-slate-300">
+              <span>Descuento aplicado:</span>
+              <span class="text-rose-300">-Bs {{ discount() }}</span>
+            </div>
+            <div class="flex justify-between text-base font-bold border-t border-slate-800 pt-2 text-white">
+              <span>TOTAL A COBRAR:</span>
+              <span class="text-amber-400 text-lg">Bs {{ total() }}</span>
+            </div>
+          </div>
+
+          <!-- Formas de Pago y Política 5 -->
+          <div class="space-y-3 rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Forma de Pago</label>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Efectivo (Siempre Activo) -->
+              <div class="rounded-lg border-2 border-slate-900 bg-white p-2.5 text-center cursor-pointer shadow-sm">
+                <span class="block text-xs font-bold text-slate-900">💵 Efectivo (Contado)</span>
+                <span class="block text-[10px] text-slate-500">Autorizado</span>
+              </div>
+
+              <!-- Medios Electrónicos (Bloqueados si offline) -->
+              <div
+                class="rounded-lg border p-2.5 text-center transition"
+                [ngClass]="isOfflineEffective() ? 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed' : 'border-slate-300 bg-white'"
+              >
+                <span class="block text-xs font-bold text-slate-600">💳 Tarjeta / QR</span>
+                <span class="block text-[10px]" [ngClass]="isOfflineEffective() ? 'text-rose-600 font-semibold' : 'text-slate-400'">
+                  {{ isOfflineEffective() ? 'Bloqueado sin red' : 'Disponible' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Calculadora de Cambio / Vuelto en Efectivo -->
+            <div class="space-y-2 pt-2 border-t border-slate-200/80">
+              <label class="block text-xs font-semibold text-slate-700">Efectivo Entregado por Cliente (Bs)</label>
+              <div class="flex gap-2">
+                <input
+                  hlmInput
+                  type="number"
+                  placeholder="0.00"
+                  class="font-mono text-sm font-bold bg-white"
+                  [ngModel]="cashReceived()"
+                  (ngModelChange)="cashReceived.set($event ? Number($event) : null)"
+                />
+                <button
+                  hlmBtn
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  class="text-xs px-3 font-semibold whitespace-nowrap"
+                  (click)="setExactCash()"
+                >
+                  Exacto
+                </button>
+              </div>
+
+              <!-- Botones Rápidos de Billetes -->
+              <div class="flex gap-1.5 text-xs">
+                <button type="button" class="flex-1 rounded border border-slate-300 bg-white py-1 hover:bg-slate-100 font-mono" (click)="addCash(20)">+20</button>
+                <button type="button" class="flex-1 rounded border border-slate-300 bg-white py-1 hover:bg-slate-100 font-mono" (click)="addCash(50)">+50</button>
+                <button type="button" class="flex-1 rounded border border-slate-300 bg-white py-1 hover:bg-slate-100 font-mono" (click)="addCash(100)">+100</button>
+                <button type="button" class="flex-1 rounded border border-slate-300 bg-white py-1 hover:bg-slate-100 font-mono" (click)="addCash(200)">+200</button>
+              </div>
+
+              <!-- Indicador Visual de Vuelto -->
+              <div class="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 border border-emerald-200">
+                <span class="text-xs font-bold text-emerald-900">Cambio / Vuelto:</span>
+                <span class="font-mono text-base font-extrabold text-emerald-800">Bs {{ changeAmount() }}</span>
+              </div>
+            </div>
+
+            <!-- Botón Principal de Cobro -->
+            <button
+              hlmBtn
+              type="button"
+              class="w-full bg-slate-900 text-white hover:bg-slate-800 py-3 text-sm font-bold shadow-md transition"
+              [disabled]="submitting() || selectedItems().length === 0"
+              (click)="submitSale()"
+            >
+              @if (submitting()) {
+                <span class="inline-block animate-spin mr-2">⟳</span> Procesando...
+              } @else if (isOfflineEffective()) {
+                ⚡ Emitir Ticket de Contingencia Offline
+              } @else {
+                Cobrar y Emitir Comprobante
+              }
+            </button>
+          </div>
+        </div>
+      </section>
     </aside>
   </section>
+
+  <!-- MODAL: Comprobante Térmico de Venta / Contingencia (Imprimible) -->
+  @if (showReceiptModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm print:p-0 print:bg-white" (click)="closeReceiptModal()">
+      <div
+        class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl print:shadow-none print:w-full print:max-w-none print:p-0 text-slate-900"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Formato Ticket Térmico -->
+        <div class="border-2 border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-3 bg-slate-50/50 print:border-none print:bg-white">
+          <div class="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-3">
+            <p class="font-bold text-sm tracking-wider uppercase">FASHIONSTORE SAAS</p>
+            <p class="text-[11px] text-slate-500">{{ branchName() }}</p>
+            @if (lastOfflineSale()) {
+              <div class="mt-1 rounded bg-amber-100 py-0.5 text-[10px] font-bold text-amber-900">
+                *** COMPROBANTE DE CONTINGENCIA OFFLINE ***
+              </div>
+            } @else {
+              <div class="mt-1 rounded bg-emerald-100 py-0.5 text-[10px] font-bold text-emerald-900">
+                *** VENTA PRESENCIAL CONSOLIDAD ***
+              </div>
+            }
+          </div>
+
+          <div class="text-[11px] space-y-1">
+            <p><strong>Código:</strong> {{ lastOfflineSale()?.sale_code ?? ('VTA-' + lastSale()?.id?.substring(0, 8)?.toUpperCase()) }}</p>
+            <p><strong>Fecha:</strong> {{ lastOfflineSale()?.created_at ?? lastSale()?.created_at }}</p>
+            <p><strong>Cajero:</strong> {{ cashierName() }}</p>
+            <p><strong>Medio de Pago:</strong> EFECTIVO (Contado)</p>
+          </div>
+
+          <!-- Items -->
+          <div class="border-t border-b border-dashed border-slate-300 py-2 space-y-1">
+            @for (item of (lastOfflineSale()?.items ?? lastSale()?.items ?? []); track item.variant_id) {
+              <div class="flex justify-between text-[11px]">
+                <span>{{ item.quantity }}x {{ item.product_name }}</span>
+                <span>Bs {{ item.line_total }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Totales y Arqueo -->
+          <div class="space-y-1 text-right text-xs">
+            <div class="flex justify-between">
+              <span>Subtotal:</span>
+              <span>Bs {{ lastOfflineSale()?.subtotal ?? lastSale()?.subtotal }}</span>
+            </div>
+            <div class="flex justify-between font-bold text-sm">
+              <span>TOTAL:</span>
+              <span>Bs {{ lastOfflineSale()?.total_amount ?? lastSale()?.total_amount }}</span>
+            </div>
+            @if (lastOfflineSale()) {
+              <div class="flex justify-between text-slate-500 text-[11px]">
+                <span>Entregado:</span>
+                <span>Bs {{ lastOfflineSale()?.cash_received }}</span>
+              </div>
+              <div class="flex justify-between text-emerald-700 font-bold text-[11px]">
+                <span>Cambio:</span>
+                <span>Bs {{ lastOfflineSale()?.change_amount }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Identificador UUIDv4 Inviolable de Contingencia -->
+          <div class="border-t border-dashed border-slate-300 pt-2 text-center space-y-1">
+            <p class="text-[10px] uppercase font-bold text-slate-500">ID Universal de Contingencia (UUIDv4):</p>
+            <p class="text-[9px] font-mono break-all bg-white p-1 rounded border border-slate-200 select-all">
+              {{ lastOfflineSale()?.client_sale_id ?? lastSale()?.client_sale_id ?? lastSale()?.id }}
+            </p>
+            <p class="text-[9px] text-slate-400 italic">
+              Operación autenticada según pliego Sistemas 2 (CU13)
+            </p>
+          </div>
+        </div>
+
+        <!-- Botones de Acción en Modal -->
+        <div class="mt-4 flex gap-2 print:hidden">
+          <button hlmBtn type="button" variant="outline" class="flex-1 text-xs" (click)="closeReceiptModal()">
+            Nueva Venta
+          </button>
+          <button hlmBtn type="button" class="flex-1 bg-slate-900 text-white text-xs hover:bg-slate-800" (click)="printReceipt()">
+            🖨️ Imprimir Ticket
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL DE DEVOLUCIÓN DE PRENDA CON RETENCIÓN OPERATIVA (CU18)            -->
+  <!-- ========================================================================= -->
+  @if (showReturnModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div class="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Cabecera del Modal -->
+        <header class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-semibold">Procesar Devolución de Prenda</h2>
+            <p class="text-xs text-slate-400">Política comercial de retención operativa (CU18)</p>
+          </div>
+          <button type="button" (click)="closeReturnModal()" class="text-slate-400 hover:text-white transition">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <!-- Contenido del Modal -->
+        <div class="p-6 overflow-y-auto space-y-5 text-sm text-slate-700">
+          <!-- Paso 1: Búsqueda de la Venta Original -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-slate-800">1. Identificador de Venta o Código de Ticket</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono focus:border-slate-900 focus:outline-none"
+                placeholder="UUID de venta (ej: 5c439e04-698e-...)"
+                [ngModel]="returnSaleIdInput()"
+                (ngModelChange)="returnSaleIdInput.set($event)"
+                (keyup.enter)="lookupSaleForReturn()"
+              />
+              <button
+                hlmBtn
+                type="button"
+                size="sm"
+                class="bg-slate-900 text-white text-xs hover:bg-slate-800"
+                [disabled]="loadingSaleLookup()"
+                (click)="lookupSaleForReturn()"
+              >
+                {{ loadingSaleLookup() ? 'Buscando...' : 'Localizar Venta' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Paso 2: Selección del Ítem Vendido -->
+          @if (foundSaleForReturn()) {
+            <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                <span>Venta: #{{ foundSaleForReturn()!.id.slice(0, 8).toUpperCase() }}</span>
+                <span>Fecha: {{ foundSaleForReturn()!.created_at | date:'short' }}</span>
+              </div>
+
+              <label class="block text-xs font-semibold text-slate-800">2. Selecciona la prenda a devolver</label>
+              <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                @for (item of foundSaleForReturn()!.items; track item.variant_id) {
+                  <button
+                    type="button"
+                    class="w-full text-left p-2.5 rounded-lg border text-xs flex items-center justify-between transition"
+                    [ngClass]="selectedReturnVariantId() === item.variant_id ? 'border-slate-900 bg-slate-100 font-medium' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                    (click)="onSelectReturnVariant(item.variant_id)"
+                  >
+                    <div>
+                      <p class="text-slate-900">{{ item.product_name }}</p>
+                      <p class="text-[11px] text-slate-500 font-mono">{{ item.variant_sku }} · Talla: {{ item.size_name || 'Única' }}</p>
+                    </div>
+                    <span class="font-bold text-slate-800">Bs {{ item.unit_price }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Paso 3: Cotización Financiera y Retención Operativa -->
+          @if (returnQuote()) {
+            <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-amber-900">Política de Tienda Aplicada</span>
+                <span class="text-[11px] text-amber-800 font-medium">{{ returnQuote()!.policy_tenant_name }}</span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                <div class="bg-white/80 p-2 rounded-lg border border-amber-100">
+                  <p class="text-[10px] text-slate-500">Precio Pagado</p>
+                  <p class="text-xs font-bold text-slate-900">Bs {{ returnQuote()!.original_item_amount }}</p>
+                </div>
+                <div class="bg-white/80 p-2 rounded-lg border border-amber-200">
+                  <p class="text-[10px] text-amber-800 font-semibold">Retención (-{{ returnQuote()!.retention_percentage }}%)</p>
+                  <p class="text-xs font-bold text-amber-700">Bs {{ returnQuote()!.retention_amount }}</p>
+                </div>
+                <div class="bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                  <p class="text-[10px] text-emerald-800 font-semibold">Reembolso Neto</p>
+                  <p class="text-sm font-bold text-emerald-700">Bs {{ returnQuote()!.refund_amount }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Paso 4: Condiciones y Modalidad de Reembolso -->
+            <div class="space-y-3 pt-1">
+              <!-- Verificación de Etiqueta Textil (Inviolable) -->
+              <div class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                <input
+                  type="checkbox"
+                  id="tagCheck"
+                  class="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                  [checked]="returnCondition() === 'good_with_tags'"
+                  (change)="returnCondition.set($any($event.target).checked ? 'good_with_tags' : 'damaged_or_no_tags')"
+                />
+                <label for="tagCheck" class="text-xs text-slate-700 cursor-pointer">
+                  <strong class="text-slate-900">Prenda en perfecto estado con etiqueta intacta:</strong> Se constata ausencia de manchas, olores o desgaste.
+                </label>
+              </div>
+
+              <!-- Selector de Modalidad de Reembolso -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-semibold text-slate-800">Modalidad de Reembolso</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="p-2.5 rounded-lg border text-left text-xs transition"
+                    [ngClass]="refundMethod() === 'NOTA_CREDITO' ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-semibold ring-1 ring-emerald-600' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                    (click)="refundMethod.set('NOTA_CREDITO')"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span>Nota de Crédito Digital</span>
+                      <span class="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold">Recomendada</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 font-normal mt-0.5">Cupón con saldo para compras futuras</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="p-2.5 rounded-lg border text-left text-xs transition"
+                    [ngClass]="refundMethod() === 'EFECTIVO' ? 'border-slate-900 bg-slate-100 font-semibold ring-1 ring-slate-900' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                    (click)="refundMethod.set('EFECTIVO')"
+                  >
+                    <span>Efectivo de Caja</span>
+                    <p class="text-[11px] text-slate-500 font-normal mt-0.5">Retiro físico inmediato en mostrador</p>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Motivo Opcional -->
+              <div class="space-y-1">
+                <label class="block text-xs font-semibold text-slate-800">Motivo de Devolución (Opcional)</label>
+                <input
+                  type="text"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-slate-900 focus:outline-none"
+                  placeholder="Ej: Cambio de opinión, talla grande, regalo duplicado..."
+                  [ngModel]="returnReason()"
+                  (ngModelChange)="returnReason.set($event)"
+                />
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Pie y Acciones -->
+        <footer class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+          <button hlmBtn type="button" variant="outline" size="sm" class="text-xs" (click)="closeReturnModal()">
+            Cancelar
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            class="bg-rose-700 text-white text-xs hover:bg-rose-800"
+            [disabled]="!returnQuote() || returnCondition() !== 'good_with_tags' || submittingReturn()"
+            (click)="processReturnSubmit()"
+          >
+            {{ submittingReturn() ? 'Procesando Devolución...' : 'Consolidar Devolución' }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL DE COMPROBANTE DE DEVOLUCIÓN Y NOTA DE CRÉDITO EMITIDA             -->
+  <!-- ========================================================================= -->
+  @if (showReturnReceiptModal() && lastProcessedReturn()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-200 p-6 space-y-4 text-center">
+        <div class="h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Devolución Consolidada</h3>
+          <p class="text-xs text-slate-500">La prenda ha reingresado al inventario físico (+1)</p>
+        </div>
+
+        <div class="rounded-xl bg-slate-50 p-4 border border-slate-200 space-y-2 text-xs text-left">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Monto Original:</span>
+            <span class="font-medium">Bs {{ lastProcessedReturn()!.original_item_amount }}</span>
+          </div>
+          <div class="flex justify-between text-amber-700">
+            <span>Retención (-{{ lastProcessedReturn()!.retention_percentage }}%):</span>
+            <span class="font-semibold">-Bs {{ lastProcessedReturn()!.retention_amount }}</span>
+          </div>
+          <div class="flex justify-between text-emerald-700 font-bold text-sm pt-1 border-t border-slate-200">
+            <span>Reembolso Neto:</span>
+            <span>Bs {{ lastProcessedReturn()!.refund_amount }}</span>
+          </div>
+
+          @if (lastProcessedReturn()!.credit_note_code) {
+            <div class="mt-3 p-3 bg-white rounded-lg border border-emerald-200 text-center space-y-1">
+              <p class="text-[10px] text-slate-500 font-semibold uppercase">Código de Nota de Crédito Digital</p>
+              <p class="text-sm font-mono font-bold text-emerald-800 tracking-wider select-all">
+                {{ lastProcessedReturn()!.credit_note_code }}
+              </p>
+              <p class="text-[10px] text-slate-400">Canjeable en cualquier compra de la boutique</p>
+            </div>
+          } @else {
+            <div class="mt-2 p-2 bg-slate-100 rounded text-center text-xs text-slate-700 font-medium">
+              Reembolso entregado en efectivo en caja
+            </div>
+          }
+        </div>
+
+        <button hlmBtn type="button" class="w-full bg-slate-900 text-white text-xs hover:bg-slate-800" (click)="closeReturnReceiptModal()">
+          Aceptar y Cerrar
+        </button>
+      </div>
+    </div>
+  }
 </section>

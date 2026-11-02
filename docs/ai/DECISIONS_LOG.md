@@ -212,3 +212,35 @@
 * **Impacto:**
   - Archivos creados: [`docker-compose.yml`](file:///c:/Users/PERSONAL/ecommerce-SI2/docker-compose.yml) y [`.dockerignore`](file:///c:/Users/PERSONAL/ecommerce-SI2/.dockerignore).
   - Archivo actualizado: [`backend/Dockerfile`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/Dockerfile).
+
+### Registro 21: 2026-11-02 — Venta POS Offline en Efectivo con Contingencia UUIDv4 (CU13)
+* **Decisión:**
+  1. Enriquecer los esquemas y servicios de venta POS en `p5_gestion_ventas_pos` para admitir ventas offline con atributos `client_sale_id: UUID | None`, `is_offline: bool` y `synced_at: datetime | None`.
+  2. Aplicar de forma estricta la **Política Comercial 5 (Ventas Offline)**:
+     - Las ventas realizadas en modo desconectado deben ser única y exclusivamente en **efectivo** (`cash`).
+     - Todo intento de registrar una venta offline con método electrónico (tarjeta, Stripe, transferencia) se rechaza a nivel de validación Pydantic (`HTTP 422`).
+  3. Soportar **Idempotencia Transaccional por UUIDv4**: al sincronizar o reenviar una venta con `client_sale_id` existente en el mismo tenant, el backend confirma la venta preexistente sin volver a descontar existencias de inventario ni generar duplicidad de facturación.
+  4. En el frontend Web PWA (`/app/cajero/caja`), implementar bandeja outbox IndexedDB (`idb-sales.service.ts`), calculadora de cambio de efectivo, bloqueo visual de métodos electrónicos en desconexión y emisión de comprobante térmico de contingencia (`TCK-OFF-XXXXXX`) con hash UUIDv4.
+* **Motivo:** Cumplimiento de los requisitos de contingencia desconectada en tienda física y resguardo contra descuadres de inventario por reintentos de red.
+* **Impacto:**
+  - Backend: [`sales_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sales_schema.py), [`sales_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sales_service.py), [`sales_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/sales_routes.py).
+  - Frontend: [`idb-sales.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-sales.service.ts), [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts), [`caja-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.html).
+  - Pruebas: [`test_cu13_offline_pos_sales.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu13_offline_pos_sales.py) con 5/5 PASSED.
+
+### Registro 22: 2026-11-02 — Política Inviolable de Devolución de Prenda con Retención Operativa (20%–50%) y Nota de Crédito (CU18)
+* **Decisión:**
+  1. Implementar la arquitectura transaccional de devolución de prendas en `p5_gestion_ventas_pos` con endpoints `POST /api/returns/quote`, `POST /api/returns` y `GET /api/returns`.
+  2. Aplicar de forma estricta la **Política Comercial 2 (P-Ten-03)**:
+     - Retención operativa fija o configurable por tenant en el rango acotado de **20% a 50%** (ej. 30% en Boutique Elegance, 20% en Moda Urbana).
+     - Reembolso neto al cliente equivalente al **50% a 80%** del valor pagado.
+     - Métodos de reembolso permitidos: `NOTA_CREDITO` (por defecto, generando código digital trazable `NC-YYYYMMDD-XXXX`) o `EFECTIVO` (en mostrador).
+  3. Exigir validación de condición de prenda: la devolución se procesa **únicamente si la prenda está intacta y conserva la etiqueta original adherida** (`condition = 'good_with_tags'`). Si la prenda está usada o sin etiqueta, se rechaza la operación (`HTTP 400`).
+  4. Validar ventana temporal de devolución (`max_days`) parametrizada por política de la empresa (ej. 7 a 15 días tras la compra).
+  5. Reingreso de stock atómico: incremento físico (`quantity += 1`) en la tabla `inventory` utilizando bloqueo pesimista de fila (`with_for_update`) para evitar carreras concurrentes.
+  6. En el frontend Web PWA (`/app/cajero/caja`), implementar modal de cotización previa con desglose en tiempo real, selector de método de liquidación y modal de emisión de Nota de Crédito digital con estética boutique.
+* **Motivo:** Exigencia formal de las políticas de negocio del pliego de Sistemas 2 y garantía de preservación del margen comercial contra costos de reacondicionamiento y peritaje textil.
+* **Impacto:**
+  - Backend: [`return_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/return_schema.py), [`return_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/return_service.py), [`return_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/return_routes.py).
+  - Frontend: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts), [`caja-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.html).
+  - Pruebas: [`backend/tests/test_cu18_garment_return.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu18_garment_return.py) con 8/8 PASSED y regresión completa 26/26 PASSED.
+
