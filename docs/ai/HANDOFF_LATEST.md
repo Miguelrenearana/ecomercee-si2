@@ -71,19 +71,36 @@
      - Diagrama de Robustez / Comunicación: [`docsUML/CUrobustez/CU18_comm_devolucion_prenda_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUrobustez/CU18_comm_devolucion_prenda_EA.js).
      - Diagrama de Secuencia: [`docsUML/CUSecuencia/CU18_secuencia_devolucion_prenda_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUSecuencia/CU18_secuencia_devolucion_prenda_EA.js) con flujo BCE completo y fragmentos `alt`.
 
+6. **Implementación Fullstack de CU14 (Gestionar Bandeja Local de Operaciones Pendientes - Outbox PWA / SQLite):**
+   - **Backend (`p5_gestion_ventas_pos`):**
+     - Schemas: [`sales_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sales_schema.py) con `OfflineStatusCheckRequest` y `OfflineStatusCheckResponse`.
+     - Servicios: [`sales_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sales_service.py) con `check_offline_sales_status(db, client_sale_ids, tenant_id)` para conciliar en bloque qué operaciones ya existen centralmente sin alterar el stock.
+     - Endpoint REST: `POST /api/sales/offline/check-status` montado en `sales_routes.py`.
+     - Suite automatizada [`backend/tests/test_cu14_outbox_operations.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu14_outbox_operations.py) con **4/4 pruebas PASSED (100%)**.
+   - **Frontend Web PWA (Angular 21 con `/frontend-design`):**
+     - Almacenamiento IndexedDB: [`idb-sales.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-sales.service.ts) ampliado con `getPendingOnly()`, `getSyncedOnly()`, `getTotalPendingCash()`, `markAsError()` y `clearSynced()`.
+     - Cliente API: [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts) con `checkOfflineStatus(clientSaleIds)`.
+     - Interfaz POS en [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts) y template HTML:
+       - Navegación segmentada entre TPV Principal y "Bandeja Outbox Local" con badge dinámico de comprobantes pendientes.
+       - 3 tarjetas de métricas en vivo: Efectivo en Gaveta Offline (`totalPendingCash()`), Comprobantes en Bandeja y Enlace con Servidor.
+       - Barra de herramientas: Sincronizar Lote, Verificar con Servidor (`POST /api/sales/offline/check-status`), Purgar Sincronizadas y Recargar.
+       - Tabla con código de ticket (`TCK-OFF-XXXXXX`), UUIDv4 de contingencia, fecha, ítems, desglose de efectivo/cambio, total, badge de sincronización y acciones (ver comprobante térmico, sincronizar y descartar).
+     - Verificación TypeScript `npx tsc --noEmit` completada con **0 errores**.
+   - **Pruebas de Caja Negra:**
+     - Actualizado [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) con 4 casos de prueba reales (`CP-CU14-01` a `CP-CU14-04`) en formato canónico de 8 columnas.
+
 ---
 
 ### 2. Estado de Verificación y Compilación
 * **Base de Datos:** Migración Alembic `0044` (Head Maestro). Esquema congelado para los 25 CUs.
-* **Backend:** 7 paquetes canónicos; suites `test_cu04` (6/6), `test_cu10` (4/4), `test_cu12` (7/7), `test_cu13` (5/5), `test_cu17` (8/8) y `test_cu18` (8/8) pasando al 100% (26/26 regresión total).
-* **Frontend:** Angular 21 PWA con IndexedDB; 0 errores de tipado en TypeScript.
+* **Backend:** 7 paquetes canónicos; suites `test_cu04` (6/6), `test_cu10` (4/4), `test_cu12` (7/7), `test_cu13` (5/5), `test_cu14` (4/4), `test_cu17` (8/8) y `test_cu18` (8/8) pasando al 100% (30/30 regresión acumulada).
+* **Frontend:** Angular 21 PWA con IndexedDB; 0 errores de tipado en TypeScript (`npx tsc --noEmit`).
 * **Diagramas UML:** JScript para Enterprise Architect en `docsUML/CUrobustez/` y `docsUML/CUSecuencia/`.
 
 ---
 
 ### 3. Próximo Paso Inmediato
 Avanzar con el siguiente caso de uso del Bloque B de la Presentación 2:
-* **`CU14` / `CU15` – Sincronización de Ventas Offline (Outbox y Batch Sync Idempotente con `/api/sales/offline/batch-sync`).**
-1. **`CU14: Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)`**
-   - Vista de inspección de operaciones locales en cola `PENDIENTE_SYNC`.
-   - Visualización de tickets pendientes y disparador de sincronización.
+* **`CU15: Sincronizar Lotes de Ventas con Idempotencia Central (sync_operations)`:**
+  - Endpoint backend `POST /api/sales/offline/batch-sync` validando transacciones en bloque contra `sync_operations`.
+  - Mecanismo de prevención de doble inserción de ventas y doble descuento de inventario ante reintentos o reconexiones intermitentes.

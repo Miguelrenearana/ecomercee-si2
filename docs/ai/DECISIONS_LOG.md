@@ -244,3 +244,19 @@
   - Frontend: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts), [`caja-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.html).
   - Pruebas: [`backend/tests/test_cu18_garment_return.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu18_garment_return.py) con 8/8 PASSED y regresión completa 26/26 PASSED.
 
+### Registro 23: 2026-11-02 — Gestión de Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite - CU14)
+* **Decisión:**
+  1. Diseñar el patrón Outbox en el frontend Angular PWA (`CajaPageComponent`) desacoplando la terminal de cobro activa del repositorio de sincronización local persistido en IndexedDB (`IdbSalesService`).
+  2. Implementar endpoint ligero de conciliación de estado en backend `POST /api/sales/offline/check-status` en `p5_gestion_ventas_pos`:
+     - Permite al cliente enviar una lista de `client_sale_ids` (UUIDv4) para verificar su presencia en la base de datos central.
+     - Retorna un mapa asociativo `{uuid: 'synced' | 'pending'}` filtrado estrictamente por `tenant_id`, sin generar ventas ni modificar existencias de inventario.
+  3. En la interfaz Web PWA (`/app/cajero/caja`):
+     - Navegación por pestañas con contador dinámico de transacciones en contingencia.
+     - Tres tarjetas métricas de arqueo en tiempo real: Efectivo en Gaveta Offline (`totalPendingCash`), Comprobantes en cola y Estado de conectividad.
+     - Tabla interactiva con desglose de tickets, hash UUIDv4, prendas, montos y botones de acción (ver comprobante térmico, sincronización individual, purga de sincronizados y sincronización por lote).
+* **Motivo:** Requerimiento formal de tolerancia a desconexión y auditoría de arqueo físico de caja para la 2da Presentación de Sistemas 2.
+* **Impacto:**
+  - Backend: [`sales_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sales_schema.py), [`sales_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sales_service.py), [`sales_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/sales_routes.py).
+  - Frontend: [`idb-sales.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-sales.service.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts), [`caja-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.html).
+  - Pruebas: [`backend/tests/test_cu14_outbox_operations.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu14_outbox_operations.py) con 4/4 PASSED y verificación TypeScript con 0 errores.
+

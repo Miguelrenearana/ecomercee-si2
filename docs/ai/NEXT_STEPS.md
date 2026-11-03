@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 Estado de Situación: 15 de 25 Casos de Uso Implementados (100% Verificados)
+## 🎯 Estado de Situación: 16 de 25 Casos de Uso Implementados (100% Verificados)
 
 ### Casos de Uso Listos y Funcionales:
 - [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** (`p0_saas_plataforma`)
@@ -20,6 +20,7 @@
 - [x] **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite)** (`p4_gestion_compras_reservas`)
 - [x] **`CU12` – Atender y Resolver Conflictos de Reservas Expiradas** (`p4_gestion_compras_reservas`)
 - [x] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** (`p5_gestion_ventas_pos`)
+- [x] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** (`p5_gestion_ventas_pos`)
 - [x] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** (`p5_gestion_ventas_pos`)
 - [x] **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** (`p5_gestion_ventas_pos`)
 
@@ -28,10 +29,10 @@
 ## 🚀 Tareas Inmediatas de Implementación (Presentación 2)
 
 ### Bloque B: Suite POS Offline, Sincronización Idempotente y Conflictos (`CU14` al `CU16`)
-1. **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite):** (Siguiente Tarea Inmediata)
-   - [ ] Pestaña Outbox en caja con lista de ventas locales `PENDIENTE_SYNC` y badge dinámico ámbar.
-   - [ ] Inspección detallada de tickets offline con montos, ítems y UUIDv4 de contingencia.
-2. **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`):**
+1. **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite):** (Completado)
+   - [x] Pestaña Outbox en caja con lista de ventas locales `PENDIENTE_SYNC`, tarjetas de métricas en vivo y arqueo de efectivo offline.
+   - [x] Sincronización unitaria, sincronización en lote, purga de sincronizadas y verificación contra servidor `POST /api/sales/offline/check-status`.
+2. **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`):** (Siguiente Tarea Inmediata)
    - [ ] Endpoint backend `POST /api/sales/offline/batch-sync` validando contra tabla `sync_operations`.
    - [ ] Prevención de doble inserción de ventas y doble descuento de inventario ante reintentos de red.
 3. **`CU16` – Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock:**

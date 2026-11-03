@@ -103,6 +103,10 @@ Identificar y detallar el cumplimiento de las reglas críticas del proyecto:
   - `docs/ai/DECISIONS_LOG.md` (Si se acordó un cambio arquitectónico o de modelo).
   - `docs/ai/IMPLEMENTATION_PHASES.md` (Marcar checkbox `[x]`).
   - `docs/ai/sessions/YYYY-MM-DD-autor-o-tarea.md` (**Obligatorio** si se modificó código fuente).
+- **Actualización de Resultados de Pruebas de Caja Negra:**
+  - docs/informes/PRUEBAS_CAJA_NEGRA.md: Incorporar o actualizar la sección del Caso de Uso con casos de prueba reales en formato canónico de 8 columnas (ID, Objetivo / Escenario, Precondiciones, Datos de Entrada (Input), Pasos de Ejecución, Resultado Esperado, Resultado Obtenido, Estado: APROBADO), datos reales (UUIDs, payloads exactos) y actualizar el resumen ejecutivo de cobertura.
+- **Mensaje de Commit por Lotes (Conventional Commits):**
+  - Entregar los mensajes de commit estructurados separando **Backend** de **Frontend** (y documentación/diagramas si aplica), siguiendo Conventional Commits estricto y sin atribuciones de IA.
 ```
 
 ---

@@ -9,8 +9,8 @@
 
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
-| **Implementados y Verificados (100%)** | **15 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU17`, `CU18` |
-| **En Curso / Inmediatos (Presentación 2)** | **3 CUs** | `CU14`, `CU15`, `CU16` |
+| **Implementados y Verificados (100%)** | **16 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU17`, `CU18` |
+| **En Curso / Inmediatos (Presentación 2)** | **2 CUs** | `CU15`, `CU16` |
 | **Programados (Presentación 3)** | **7 CUs** | `CU19`, `CU20`, `CU21`, `CU22`, `CU23`, `CU24`, `CU25` |
 
 ---
@@ -43,9 +43,11 @@
     Gestión operativa de discrepancias cuando un cliente asiste tras la expiración del apartado. Backend `p4_gestion_compras_reservas` con endpoints `GET /reservations/branch/conflicts` y `POST /reservations/{id}/resolve-conflict`, validación atómica de inventario físico remanente en percha, reactivación (+24h/48h) con re-bloqueo de `reserved_quantity`, sustitución de prenda/talla disponible o cierre definitivo con nota de auditoría obligatoria. Frontend PWA Angular en `/app/encargado/reservations` con bandeja visual de diagnóstico de percha y modal de resolución adaptativa. Suite `test_cu12_resolve_expired_reservations.py` aprobada 7/7.
 13. **`CU13: Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4` [Nuevo 2P - 100%]:**  
     Venta de mostrador POS desconectada en `p5_gestion_ventas_pos` con cumplimiento estricto de la **Política de Negocio 5**: cobro en efectivo exclusivo (`cash`), validación de `client_sale_id` UUIDv4 e idempotencia transaccional (reintentos no duplican decremento de inventario). Frontend PWA Angular en `/app/cajero/caja` con bandeja local IndexedDB (`IdbSalesService`), calculadora de cambio en vivo con atajos de efectivo, bloqueo visual de métodos electrónicos en modo desconectado y modal de comprobante térmico con hash UUIDv4 (`TCK-OFF-XXXXXX`). Suite `test_cu13_offline_pos_sales.py` aprobada 5/5.
-14. **`CU17: Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Validación de Estado` [Nuevo 2P - 100%]:**  
+14. **`CU14: Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)` [Nuevo 2P - 100%]:**  
+    Módulo de bandeja local outbox en Angular PWA (`CajaPageComponent`) y backend `p5_gestion_ventas_pos`. Endpoint de conciliación de estado `POST /api/sales/offline/check-status` para verificar qué ventas ya fueron consolidadas en el servidor central. Panel con 3 tarjetas de métricas en vivo (Efectivo en Gaveta Offline `totalPendingCash`, comprobantes en cola, estado de conexión), sincronización individual y por lotes, verificación reactiva con backend, purga de comprobantes sincronizados y previsualización de tickets térmicos con UUIDv4. Suite `test_cu14_outbox_operations.py` aprobada 4/4 y verificación TypeScript limpia.
+15. **`CU17: Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Validación de Estado` [Nuevo 2P - 100%]:**  
     Implementación rigurosa de la **Política de Negocio 1 (P-Ten-01)** en `p5_gestion_ventas_pos`. Endpoints `POST /api/exchanges/quote`, `POST /api/exchanges` y `GET /api/exchanges`. Cálculo dinámico de diferencia de precio ($\Delta = P_{\text{nueva}} - P_{\text{original}}$). Si $\Delta > 0$, el cambio se consolida **única y exclusivamente si el cliente abona la diferencia** en caja (`difference_paid = True`); de lo contrario, se rechaza con HTTP 400 y el inventario no se altera. Validación de etiqueta intacta (`good_with_tags`), plazo de cambio (máx. 30 días), actualización física atómica de inventario (+1 vieja, -1 nueva con `with_for_update`) y persistencia en tabla `garment_exchanges`. Suite `test_cu17_garment_exchange.py` con 8/8 pruebas aprobadas (100%).
-15. **`CU18: Procesar Devolución de Prenda con Retención Operativa (20%–50%) y Nota de Crédito` [Nuevo 2P - 100%]:**  
+16. **`CU18: Procesar Devolución de Prenda con Retención Operativa (20%–50%) y Nota de Crédito` [Nuevo 2P - 100%]:**  
     Cumplimiento riguroso de la **Política de Negocio 2 (P-Ten-03)** en `p5_gestion_ventas_pos`. Endpoints `POST /api/returns/quote`, `POST /api/returns` y `GET /api/returns`. Retención operativa configurada por tenant entre el 20% y el 50% (30% en Elegance, 20% en Urbana) y reembolso neto entre el 50% y 80%. Modalidades de liquidación: emisión de Nota de Crédito digital (`NC-YYYYMMDD-XXXX`) o reembolso en efectivo. Validación de prenda intacta con etiqueta adherida (`good_with_tags`) y plazo permitido. Reingreso físico de inventario atómico con bloqueo pesimista `with_for_update`. Frontend Web PWA Angular en `/app/cajero/caja` con cotización previa interactiva y modal de Nota de Crédito. Suite `test_cu18_garment_return.py` con 8/8 pruebas aprobadas (100%) y regresión total de 26/26 pruebas.
 
 ---

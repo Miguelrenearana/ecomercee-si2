@@ -42,8 +42,8 @@
   - *Estado:* 100% Implementado (Backend `p4` con endpoints `/reservations/branch/conflicts` y `/resolve-conflict`, validación de inventario en percha, reactivación con re-bloqueo +24h/48h, sustitución de variante, anulación con nota de auditoría, frontend PWA en `/app/encargado/reservations` con bandeja de conflictos reactiva y modal de resolución, suite de 7/7 pruebas unitarias pasando).
 - [x] **`CU13` – Registrar Venta POS Desconectada en Efectivo con Contingencia UUIDv4** [Nuevo 2P]
   - *Estado:* 100% Implementado (Backend `p5_gestion_ventas_pos` con cumplimiento estricto de Política 5 de solo efectivo, idempotencia por `client_sale_id`, PWA Angular `/app/cajero/caja` con bandeja local IndexedDB, calculadora de cambio en vivo, bloqueo de pagos electrónicos en desconexión y modal de ticket térmico `TCK-OFF-XXXXXX` con hash de contingencia UUIDv4. Suite `test_cu13_offline_pos_sales.py` 5/5 PASSED).
-- [ ] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** [Nuevo 2P]
-  - *Criterio de éxito:* Vista outbox con listado de tickets en estado `PENDIENTE_SYNC`, badge ámbar y botón para forzar sincronización.
+- [x] **`CU14` – Gestionar Bandeja Local de Operaciones Pendientes (Outbox PWA / SQLite)** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Panel outbox en Angular PWA `/app/cajero/caja` con pestaña segmentada, 3 tarjetas de métricas en vivo, arqueo de efectivo en gaveta offline, tabla con tickets de contingencia y UUIDv4, sincronización individual y por lote, purga de sincronizados, y endpoint backend `POST /api/sales/offline/check-status` para verificación de estado contra base central. Suite `test_cu14_outbox_operations.py` 4/4 PASSED).
 - [ ] **`CU15` – Sincronizar Lotes de Ventas con Idempotencia Central (`sync_operations`)** [Nuevo 2P]
   - *Criterio de éxito:* Endpoint `/api/sales/offline/batch-sync`; verificación contra `sync_operations` para evitar duplicar ventas o descontar stock dos veces.
 - [ ] **`CU16` – Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock** [Nuevo 2P]
