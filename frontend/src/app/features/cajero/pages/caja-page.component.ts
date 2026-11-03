@@ -84,6 +84,163 @@ export class CajaPageComponent {
   });
 
   // =========================================================================
+  // LOGICA DEL CU14: Bandeja Local de Operaciones Pendientes (Outbox PWA)
+  // =========================================================================
+  protected readonly activeTab = signal<'tpv' | 'outbox'>('tpv');
+  protected readonly outboxSales = signal<PendingOfflineSale[]>([]);
+  protected readonly syncingOutbox = signal(false);
+  protected readonly verifyingOutbox = signal(false);
+
+  protected readonly pendingSales = computed(() => this.outboxSales().filter((s) => !s.synced));
+  protected readonly syncedSales = computed(() => this.outboxSales().filter((s) => s.synced));
+  protected readonly totalPendingCash = computed(() =>
+    this.pendingSales().reduce((sum, s) => sum + s.total_amount, 0).toFixed(2)
+  );
+
+  protected switchTab(tab: 'tpv' | 'outbox'): void {
+    this.activeTab.set(tab);
+    if (tab === 'outbox') {
+      this.refreshOutbox();
+    }
+  }
+
+  protected refreshOutbox(): void {
+    this.outboxSales.set(this.idbSales.getPending());
+  }
+
+  protected openSaleDetail(sale: PendingOfflineSale): void {
+    this.lastOfflineSale.set(sale);
+    this.lastSale.set(null);
+    this.showReceiptModal.set(true);
+  }
+
+  protected removeSaleFromOutbox(clientSaleId: string): void {
+    this.idbSales.removePending(clientSaleId);
+    this.refreshOutbox();
+    toast.success('Comprobante descartado de la bandeja local.');
+  }
+
+  protected clearSyncedFromOutbox(): void {
+    this.idbSales.clearSynced();
+    this.refreshOutbox();
+    toast.success('Comprobantes sincronizados purgados de la memoria local.');
+  }
+
+  protected async syncSingleSale(sale: PendingOfflineSale): Promise<void> {
+    if (this.isOfflineEffective()) {
+      toast.error('No se puede sincronizar: el terminal está en modo desconectado.');
+      return;
+    }
+
+    try {
+      const payload: CreateSaleRequest = {
+        branch_id: sale.branch_id,
+        payment_method: 'cash',
+        cash_reference: `Sincronización Outbox - Ticket ${sale.sale_code}`,
+        client_sale_id: sale.client_sale_id,
+        is_offline: true,
+        items: sale.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
+      };
+
+      await firstValueFrom(this.salesApi.createSale(payload));
+      this.idbSales.markAsSynced(sale.client_sale_id);
+      this.refreshOutbox();
+      toast.success(`Ticket ${sale.sale_code} sincronizado exitosamente con el servidor.`);
+    } catch (error) {
+      const msg = getErrorMessage(error, 'Fallo al sincronizar venta.');
+      this.idbSales.markAsError(sale.client_sale_id, msg);
+      this.refreshOutbox();
+      toast.error(msg);
+    }
+  }
+
+  protected async syncAllPending(): Promise<void> {
+    if (this.isOfflineEffective()) {
+      toast.error('No se puede sincronizar: el terminal está en modo desconectado.');
+      return;
+    }
+
+    const pending = this.pendingSales();
+    if (pending.length === 0) {
+      toast.info('No hay operaciones pendientes de sincronizar.');
+      return;
+    }
+
+    this.syncingOutbox.set(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const sale of pending) {
+      try {
+        const payload: CreateSaleRequest = {
+          branch_id: sale.branch_id,
+          payment_method: 'cash',
+          cash_reference: `Sincronización Lote Outbox - Ticket ${sale.sale_code}`,
+          client_sale_id: sale.client_sale_id,
+          is_offline: true,
+          items: sale.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
+        };
+
+        await firstValueFrom(this.salesApi.createSale(payload));
+        this.idbSales.markAsSynced(sale.client_sale_id);
+        successCount++;
+      } catch (err) {
+        failCount++;
+        this.idbSales.markAsError(sale.client_sale_id, getErrorMessage(err, 'Error de red'));
+      }
+    }
+
+    this.syncingOutbox.set(false);
+    this.refreshOutbox();
+
+    if (failCount === 0) {
+      toast.success(`Todas las ventas offline (${successCount}) han sido sincronizadas.`);
+    } else {
+      toast.warning(`Sincronización parcial: ${successCount} exitosas, ${failCount} con error.`);
+    }
+  }
+
+  protected async checkOutboxStatusWithServer(): Promise<void> {
+    if (this.isOfflineEffective()) {
+      toast.error('Se requiere conexión activa para verificar con el servidor.');
+      return;
+    }
+
+    const all = this.outboxSales();
+    if (all.length === 0) {
+      toast.info('No hay comprobantes locales para verificar.');
+      return;
+    }
+
+    this.verifyingOutbox.set(true);
+    try {
+      const ids = all.map((s) => s.client_sale_id);
+      const res = await firstValueFrom(this.salesApi.checkOfflineStatus(ids));
+      const syncedIds = res.data?.synced_ids ?? [];
+
+      let updated = 0;
+      for (const id of syncedIds) {
+        const local = all.find((s) => s.client_sale_id === id);
+        if (local && !local.synced) {
+          this.idbSales.markAsSynced(id);
+          updated++;
+        }
+      }
+
+      this.refreshOutbox();
+      if (updated > 0) {
+        toast.success(`Verificación completa: ${updated} ventas fueron confirmadas por el servidor.`);
+      } else {
+        toast.info('Verificación completa: No se encontraron ventas previamente asentadas.');
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'No se pudo contactar al servidor para verificar estado.'));
+    } finally {
+      this.verifyingOutbox.set(false);
+    }
+  }
+
+  // =========================================================================
   // LOGICA DEL CU18: Estados de Devolución de Prenda y Nota de Crédito
   // =========================================================================
   protected readonly showReturnModal = signal(false);
@@ -102,6 +259,7 @@ export class CajaPageComponent {
 
   constructor() {
     void this.searchProducts();
+    this.refreshOutbox();
   }
 
   protected toggleSimulatedOffline(): void {
@@ -201,35 +359,43 @@ export class CajaPageComponent {
     if (this.isOfflineEffective()) {
       try {
         const clientSaleId = crypto.randomUUID();
+        const shortCode = clientSaleId.slice(0, 8).toUpperCase();
         const pendingSale: PendingOfflineSale = {
           client_sale_id: clientSaleId,
+          sale_code: `TCK-OFF-${shortCode}`,
           branch_id: branchId,
           branch_name: this.branchName(),
-          user_id: this.session.user()?.id ?? 'offline-user',
+          cashier_id: this.session.user()?.id ?? 'offline-user',
           cashier_name: this.cashierName(),
+          payment_method: 'cash',
+          cash_received: received ?? Number(this.total()),
+          change_amount: Number(this.changeAmount()),
+          subtotal: Number(this.subtotal()),
+          discount_amount: Number(this.discount()),
+          total_amount: Number(this.total()),
+          currency: 'BOB',
+          created_at: new Date().toISOString(),
+          synced: false,
           items: this.selectedItems().map((item) => ({
             variant_id: item.variant_id,
             product_name: item.product_name,
             variant_sku: item.variant_sku,
+            size_name: item.size_name,
+            color_name: item.color_name,
+            unit_price: Number(item.unit_price),
             quantity: item.quantity,
-            unit_price: item.unit_price,
-            line_total: (Number(item.unit_price) * item.quantity).toFixed(2),
+            line_total: Number(item.unit_price) * item.quantity,
           })),
-          subtotal: this.subtotal(),
-          total_amount: this.total(),
-          cash_reference: this.cashReference() || (received ? `Efectivo Bs ${received} - Vuelto Bs ${this.changeAmount()}` : null),
-          created_at: new Date().toISOString(),
-          status: 'PENDIENTE_SYNC',
-          attempts: 0,
         };
 
-        await this.idbSales.saveSale(pendingSale);
+        this.idbSales.savePending(pendingSale);
+        this.refreshOutbox();
 
         this.lastOfflineSale.set(pendingSale);
         this.lastSale.set(null);
         this.showReceiptModal.set(true);
 
-        toast.success(`Venta de contingencia guardada localmente (Ticket #${clientSaleId.slice(0, 8).toUpperCase()}).`);
+        toast.success(`Venta de contingencia guardada localmente (Ticket #${shortCode}).`);
         this.selectedItems.set([]);
         this.cashReference.set('');
         this.cashReceived.set(null);

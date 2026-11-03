@@ -77,4 +77,12 @@ export class SalesApiService {
     const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
     return this.api.post<ApiResponse<GarmentReturn>>(`/returns${query}`, payload);
   }
+
+  // CU14: Verificación de estado de operaciones offline en Outbox
+  checkOfflineStatus(clientSaleIds: string[]) {
+    return this.api.post<ApiResponse<{ synced_ids: string[]; missing_ids: string[] }>>(
+      '/sales/offline/check-status',
+      { client_sale_ids: clientSaleIds }
+    );
+  }
 }

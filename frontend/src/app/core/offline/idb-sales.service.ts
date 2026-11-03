@@ -48,6 +48,18 @@ export class IdbSalesService {
     }
   }
 
+  getPendingOnly(): PendingOfflineSale[] {
+    return this.getPending().filter((p) => !p.synced);
+  }
+
+  getSyncedOnly(): PendingOfflineSale[] {
+    return this.getPending().filter((p) => p.synced);
+  }
+
+  getTotalPendingCash(): number {
+    return this.getPendingOnly().reduce((acc, sale) => acc + (sale.total_amount || 0), 0);
+  }
+
   savePending(item: PendingOfflineSale): void {
     const list = this.getPending();
     const existingIndex = list.findIndex((p) => p.client_sale_id === item.client_sale_id);
@@ -70,12 +82,27 @@ export class IdbSalesService {
     if (item) {
       item.synced = true;
       item.synced_at = new Date().toISOString();
+      item.sync_error = null;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+  }
+
+  markAsError(clientSaleId: string, error: string): void {
+    const list = this.getPending();
+    const item = list.find((p) => p.client_sale_id === clientSaleId);
+    if (item) {
+      item.sync_error = error;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
     }
   }
 
   getPendingCount(): number {
     return this.getPending().filter((p) => !p.synced).length;
+  }
+
+  clearSynced(): void {
+    const list = this.getPending().filter((p) => !p.synced);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   }
 
   clearAll(): void {
