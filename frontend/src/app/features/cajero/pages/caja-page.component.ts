@@ -14,7 +14,16 @@ import { IdbSalesService, PendingOfflineSale } from '../../../core/offline/idb-s
 import { getErrorMessage } from '../../../core/utils/http-error.util';
 import { requestWithToast } from '../../../core/utils/request-toast.util';
 import { CatalogProduct, CatalogProductVariant } from '../../shared/models/catalog.model';
-import { CreateSaleRequest, GarmentReturn, ReturnQuoteResponse, Sale } from '../../shared/models/sale.model';
+import {
+  BatchSyncItemResult,
+  BatchSyncOperation,
+  BatchSyncRequest,
+  BatchSyncSummary,
+  CreateSaleRequest,
+  GarmentReturn,
+  ReturnQuoteResponse,
+  Sale,
+} from '../../shared/models/sale.model';
 import { CatalogApiService } from '../../shared/services/catalog-api.service';
 import { SalesApiService } from '../../shared/services/sales-api.service';
 import { SessionService } from '../../shared/services/session.service';
@@ -63,7 +72,7 @@ export class CajaPageComponent {
   protected readonly pendingOutboxCount = computed(() => this.idbSales.getPendingCount());
 
   protected readonly branchId = computed(() => this.session.user()?.branch_id ?? null);
-  protected readonly branchName = computed(() => this.session.user()?.branch_name ?? 'Sucursal Central');
+  protected readonly branchName = computed(() => (this.session.user() as any)?.branch_name ?? 'Sucursal Central');
   protected readonly cashierName = computed(() => this.session.user()?.name ?? 'Cajero en Turno');
 
   protected readonly subtotal = computed(() =>
@@ -84,12 +93,15 @@ export class CajaPageComponent {
   });
 
   // =========================================================================
-  // LOGICA DEL CU14: Bandeja Local de Operaciones Pendientes (Outbox PWA)
+  // LOGICA DEL CU14 Y CU15: Bandeja Local y Sincronización en Lote Centralizada
   // =========================================================================
   protected readonly activeTab = signal<'tpv' | 'outbox'>('tpv');
   protected readonly outboxSales = signal<PendingOfflineSale[]>([]);
   protected readonly syncingOutbox = signal(false);
   protected readonly verifyingOutbox = signal(false);
+  protected readonly lastBatchSyncSummary = signal<BatchSyncSummary | null>(null);
+  protected readonly lastBatchSyncDetails = signal<BatchSyncItemResult[]>([]);
+  protected readonly showBatchSyncSummary = signal(false);
 
   protected readonly pendingSales = computed(() => this.outboxSales().filter((s) => !s.synced));
   protected readonly syncedSales = computed(() => this.outboxSales().filter((s) => s.synced));
@@ -154,6 +166,9 @@ export class CajaPageComponent {
     }
   }
 
+  // =========================================================================
+  // CU15: Sincronización de Lotes con Idempotencia Central (/api/sales/offline/batch-sync)
+  // =========================================================================
   protected async syncAllPending(): Promise<void> {
     if (this.isOfflineEffective()) {
       toast.error('No se puede sincronizar: el terminal está en modo desconectado.');
@@ -166,38 +181,86 @@ export class CajaPageComponent {
       return;
     }
 
+    const activeBranchId = this.branchId() || pending[0]?.branch_id;
+    if (!activeBranchId) {
+      toast.error('No se determinó la sucursal activa para sincronizar el lote.');
+      return;
+    }
+
     this.syncingOutbox.set(true);
-    let successCount = 0;
-    let failCount = 0;
 
-    for (const sale of pending) {
-      try {
-        const payload: CreateSaleRequest = {
-          branch_id: sale.branch_id,
-          payment_method: 'cash',
-          cash_reference: `Sincronización Lote Outbox - Ticket ${sale.sale_code}`,
-          client_sale_id: sale.client_sale_id,
-          is_offline: true,
-          items: sale.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
-        };
+    try {
+      const operations: BatchSyncOperation[] = pending.map((sale) => ({
+        client_sale_id: sale.client_sale_id,
+        cashier_id: sale.cashier_id || null,
+        created_at: sale.created_at || null,
+        total_amount: Number(sale.total_amount),
+        cash_received: sale.cash_received != null ? Number(sale.cash_received) : null,
+        change_amount: sale.change_amount != null ? Number(sale.change_amount) : null,
+        payment_method: 'cash',
+        is_offline: true,
+        items: sale.items.map((i) => ({
+          variant_id: i.variant_id,
+          quantity: i.quantity,
+          unit_price: i.unit_price != null ? Number(i.unit_price) : null,
+        })),
+      }));
 
-        await firstValueFrom(this.salesApi.createSale(payload));
-        this.idbSales.markAsSynced(sale.client_sale_id);
-        successCount++;
-      } catch (err) {
-        failCount++;
-        this.idbSales.markAsError(sale.client_sale_id, getErrorMessage(err, 'Error de red'));
+      const payload: BatchSyncRequest = {
+        branch_id: activeBranchId,
+        operations,
+      };
+
+      const resp = await firstValueFrom(this.salesApi.batchSyncSales(payload));
+      const data = resp.data;
+
+      if (data) {
+        // 1. Marcar como sincronizadas las que el backend procesó (incluyendo duplicados o resoluciones)
+        for (const uuid of data.processed_uuids) {
+          this.idbSales.markAsSynced(uuid);
+        }
+
+        // 2. Si hubo detalles específicos, marcar mensajes de conflicto o error
+        for (const item of data.details) {
+          if (item.status === 'conflict') {
+            this.idbSales.markAsError(
+              item.client_sale_id,
+              item.message || 'Conflicto registrado: stock insuficiente por concurrencia.'
+            );
+          } else if (item.status === 'error') {
+            this.idbSales.markAsError(
+              item.client_sale_id,
+              item.message || 'Error en validación de ítem al sincronizar.'
+            );
+          }
+        }
+
+        // 3. Registrar resultados para la vista de auditoría en outbox
+        this.lastBatchSyncSummary.set(data.summary);
+        this.lastBatchSyncDetails.set(data.details);
+        this.showBatchSyncSummary.set(true);
+
+        const summary = data.summary;
+        if (summary.conflicts > 0) {
+          toast.warning(
+            `Lote procesado: ${summary.applied} aplicadas, ${summary.duplicates_ignored} duplicadas ignoradas, ${summary.conflicts} en conflicto de inventario.`
+          );
+        } else {
+          toast.success(
+            `Lote sincronizado exitosamente: ${summary.applied} aplicadas, ${summary.duplicates_ignored} duplicadas descartadas.`
+          );
+        }
       }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Fallo la sincronización en lote con el servidor central.'));
+    } finally {
+      this.syncingOutbox.set(false);
+      this.refreshOutbox();
     }
+  }
 
-    this.syncingOutbox.set(false);
-    this.refreshOutbox();
-
-    if (failCount === 0) {
-      toast.success(`Todas las ventas offline (${successCount}) han sido sincronizadas.`);
-    } else {
-      toast.warning(`Sincronización parcial: ${successCount} exitosas, ${failCount} con error.`);
-    }
+  protected closeBatchSyncSummary(): void {
+    this.showBatchSyncSummary.set(false);
   }
 
   protected async checkOutboxStatusWithServer(): Promise<void> {
@@ -309,12 +372,12 @@ export class CajaPageComponent {
       variant_id: variant.id,
       product_name: product.name,
       variant_sku: variant.sku,
-      size_name: variant.size_name,
-      color_name: variant.color_name,
+      size_name: variant.size_name ?? null,
+      color_name: variant.color_name ?? null,
       unit_price: String(finalPrice),
       original_unit_price: String(variant.price),
       quantity: 1,
-      image_url: variant.image_url || product.image_url,
+      image_url: variant.image_url || product.image_url || null,
     });
     this.selectedItems.set(items);
   }

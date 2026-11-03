@@ -4,11 +4,16 @@ import { ApiService } from '../../../core/services/api.service';
 import { ApiResponse } from '../../../core/models/api.model';
 import { Reservation } from '../models/reservation.model';
 import {
+  BatchSyncRequest,
+  BatchSyncResponse,
   CreateSaleRequest,
   ExchangeQuoteResponse,
   GarmentExchange,
   GarmentReturn,
   ReturnQuoteResponse,
+  SaleConflict,
+  SaleConflictResolveRequest,
+  SaleConflictResolveResponse,
   SaleResponse,
   SalesListResponse,
 } from '../models/sale.model';
@@ -83,6 +88,25 @@ export class SalesApiService {
     return this.api.post<ApiResponse<{ synced_ids: string[]; missing_ids: string[] }>>(
       '/sales/offline/check-status',
       { client_sale_ids: clientSaleIds }
+    );
+  }
+
+  // CU15: Sincronización de Lotes de Ventas Offline con Idempotencia Central
+  batchSyncSales(payload: BatchSyncRequest) {
+    return this.api.post<ApiResponse<BatchSyncResponse>>('/sales/offline/batch-sync', payload);
+  }
+
+  // CU16: Gestión y Resolución de Conflictos de Ventas Offline (Quiebres de Stock)
+  listSaleConflicts(branchId?: string) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.get<ApiResponse<SaleConflict[]>>(`/sales/conflicts${query}`);
+  }
+
+  resolveSaleConflict(saleId: string, payload: SaleConflictResolveRequest, branchId?: string) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ApiResponse<SaleConflictResolveResponse>>(
+      `/sales/conflicts/${encodeURIComponent(saleId)}/resolve${query}`,
+      payload
     );
   }
 }

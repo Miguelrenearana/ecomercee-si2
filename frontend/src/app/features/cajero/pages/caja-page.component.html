@@ -448,6 +448,102 @@
         </div>
       </div>
 
+      <!-- Panel de Auditoría de Sincronización en Lote (CU15: Idempotencia y Lotes) -->
+      @if (showBatchSyncSummary() && lastBatchSyncSummary(); as summary) {
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 animate-fadeIn">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Resultado de Sincronización Centralizada (CU15)</h3>
+                <p class="text-xs text-slate-500">Conciliación atómica en lote e idempotencia vía <code>sync_operations</code></p>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              title="Cerrar resumen"
+              (click)="closeBatchSyncSummary()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Métricas del Lote -->
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="rounded-lg bg-slate-50 p-3 border border-slate-200/60">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recibidos</span>
+              <p class="mt-1 text-xl font-bold text-slate-900 font-mono">{{ summary.total_received }}</p>
+            </div>
+            <div class="rounded-lg bg-emerald-50/70 p-3 border border-emerald-200/60">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Consolidadas</span>
+              <p class="mt-1 text-xl font-bold text-emerald-800 font-mono">{{ summary.applied }}</p>
+            </div>
+            <div class="rounded-lg bg-indigo-50/70 p-3 border border-indigo-200/60">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-indigo-700">Duplicados Descartados</span>
+              <p class="mt-1 text-xl font-bold text-indigo-800 font-mono">{{ summary.duplicates_ignored }}</p>
+            </div>
+            <div class="rounded-lg bg-amber-50/70 p-3 border border-amber-200/60">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Conflictos Stock</span>
+              <p class="mt-1 text-xl font-bold text-amber-800 font-mono">{{ summary.conflicts }}</p>
+            </div>
+          </div>
+
+          <!-- Detalle de Operaciones en el Lote -->
+          @if (lastBatchSyncDetails().length > 0) {
+            <div class="overflow-x-auto rounded-lg border border-slate-200/70">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th class="px-3 py-2">Identificador Cliente (UUIDv4)</th>
+                    <th class="px-3 py-2">Estado Servidor</th>
+                    <th class="px-3 py-2">ID Venta Servidor</th>
+                    <th class="px-3 py-2">Detalle / Mensaje</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (item of lastBatchSyncDetails(); track item.client_sale_id) {
+                    <tr class="hover:bg-slate-50/50">
+                      <td class="px-3 py-2 font-mono text-[11px] text-slate-700">{{ item.client_sale_id }}</td>
+                      <td class="px-3 py-2">
+                        @switch (item.status) {
+                          @case ('applied') {
+                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                              Consolidada
+                            </span>
+                          }
+                          @case ('duplicate_ignored') {
+                            <span class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800 border border-indigo-200">
+                              Idempotente
+                            </span>
+                          }
+                          @case ('conflict') {
+                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                              Conflicto Stock
+                            </span>
+                          }
+                          @default {
+                            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 border border-rose-200">
+                              {{ item.status }}
+                            </span>
+                          }
+                        }
+                      </td>
+                      <td class="px-3 py-2 font-mono text-[11px] text-slate-500">{{ item.sale_id ?? '—' }}</td>
+                      <td class="px-3 py-2 text-slate-600">{{ item.message ?? 'Procesado correctamente' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+
       <!-- Barra de Herramientas y Acciones de Bandeja -->
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex items-center gap-2">
