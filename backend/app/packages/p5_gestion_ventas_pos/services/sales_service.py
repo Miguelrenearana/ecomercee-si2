@@ -351,3 +351,33 @@ def get_sale(db: Session, branch_id: UUID | None, sale_id: UUID, user_id: UUID |
     if not sale:
         return None
     return _serialize_sale(db, sale).model_dump()
+
+
+# =========================================================================
+# LÓGICA DEL CU14: Verificación de Estado y Arqueo de Operaciones Outbox
+# =========================================================================
+def check_offline_sales_status(
+    db: Session,
+    client_sale_ids: list[UUID],
+    tenant_id: UUID | None = None,
+) -> dict[str, list[UUID]]:
+    """
+    Verifica un lote de identificadores de ventas offline (UUIDv4) contra la base de datos central.
+    Permite a la bandeja Outbox determinar instantáneamente qué comprobantes ya fueron asentados
+    en el servidor y cuáles continúan pendientes de sincronización.
+    """
+    if not client_sale_ids:
+        return {"synced_ids": [], "missing_ids": []}
+
+    query = db.query(Sale.client_sale_id).filter(Sale.client_sale_id.in_(client_sale_ids))
+    if tenant_id is not None:
+        query = query.filter(Sale.tenant_id == tenant_id)
+
+    found_rows = query.all()
+    synced_set = {row[0] for row in found_rows if row[0] is not None}
+    missing_list = [cid for cid in client_sale_ids if cid not in synced_set]
+
+    return {
+        "synced_ids": list(synced_set),
+        "missing_ids": missing_list,
+    }

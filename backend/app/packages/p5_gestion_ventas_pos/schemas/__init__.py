@@ -1,4 +1,6 @@
 from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import (
+    OfflineStatusCheckRequest,
+    OfflineStatusCheckResponse,
     SaleCreate,
     SaleItemCreate,
     SaleItemRead,

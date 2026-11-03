@@ -90,3 +90,15 @@ class SaleRead(BaseModel):
     items: list[SaleItemRead] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+# =========================================================================
+# LÓGICA DEL CU14: Esquemas de Verificación de Estado Outbox
+# =========================================================================
+class OfflineStatusCheckRequest(BaseModel):
+    client_sale_ids: list[UUID] = Field(default_factory=list)
+
+
+class OfflineStatusCheckResponse(BaseModel):
+    synced_ids: list[UUID] = Field(default_factory=list)
+    missing_ids: list[UUID] = Field(default_factory=list)

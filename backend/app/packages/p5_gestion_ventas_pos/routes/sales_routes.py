@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_branch_id, require_roles
 from app.core.database import get_db
 from app.schemas.enums import RolEnum
-from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import SaleCreate
+from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import OfflineStatusCheckRequest, SaleCreate
 from app.packages.p5_gestion_ventas_pos.services.sales_service import (
+    check_offline_sales_status,
     create_sale,
     get_sale,
     list_sales_by_branch,
@@ -82,3 +83,17 @@ async def create_sale_route(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return response(status_code=status.HTTP_201_CREATED, message="Venta registrada exitosamente", data=sale)
+
+
+# =========================================================================
+# LÓGICA DEL CU14: Verificación de Estado Outbox
+# =========================================================================
+@router.post("/offline/check-status")
+async def check_offline_sales_status_route(
+    payload: OfflineStatusCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_roles(RolEnum.cajero, RolEnum.encargado, RolEnum.administrador)),
+):
+    tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
+    result = check_offline_sales_status(db, payload.client_sale_ids, tenant_id=tenant_id)
+    return response(status_code=200, message="Estado de operaciones offline verificado", data=result)
