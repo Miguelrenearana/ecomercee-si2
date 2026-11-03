@@ -1,10 +1,16 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 02/11/2026 (Orquestación con Docker Compose e Infraestructura Local/Cloud)
+## Estado de Relevo Operativo al 03/11/2026 (Cierre y Homologación Integral de CU11 al CU18)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
+
+0. **Auditoría Exhaustiva y Cierre Integral (CU11 al CU18):**
+   - Informe formal emitido en [docs/informes/AUDITORIA_INTEGRAL_CU11_A_CU18.md](docs/informes/AUDITORIA_INTEGRAL_CU11_A_CU18.md): los 8 casos del bloque cuentan con backend 100%, frontend 100%, mobile alineado y 73/73 pruebas de caja negra PASSED.
+   - Frontend: Completado el modal interactivo de Cambio de Prenda (**CU17**) en caja-page.component.ts y .html, con 
+px tsc --noEmit en 0 errores.
+   - UML EA: Generados scripts JScript de Comunicación y Secuencia para **CU15** y **CU17** en docsUML/.
 
 1. **Orquestación con Docker Compose (`docker-compose.yml`):**
    - Creado `docker-compose.yml` en la raíz orquestando 3 servicios:

@@ -52,6 +52,21 @@
         Actualizar Catálogo
       </button>
 
+      <!-- Botón de Cambio de Prenda (CU17) -->
+      <button
+        hlmBtn
+        type="button"
+        variant="outline"
+        size="sm"
+        class="text-xs border-indigo-200 text-indigo-800 bg-indigo-50/70 hover:bg-indigo-100 transition"
+        (click)="openExchangeModal()"
+      >
+        <svg class="mr-1.5 h-3.5 w-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        Cambio de Prenda
+      </button>
+
       <!-- Botón de Devolución de Prenda (CU18) -->
       <button
         hlmBtn
@@ -177,7 +192,7 @@
                     />
                     <div>
                       <h3 class="font-bold text-slate-900 text-sm">{{ product.name }}</h3>
-                      <p class="text-xs text-slate-400">{{ product.category_name ?? 'Moda General' }}</p>
+                      <p class="text-xs text-slate-400">'Moda General'</p>
                     </div>
                   </div>
                   @if (product.discount_value) {
@@ -333,7 +348,7 @@
                   placeholder="0.00"
                   class="font-mono text-sm font-bold bg-white"
                   [ngModel]="cashReceived()"
-                  (ngModelChange)="cashReceived.set($event ? Number($event) : null)"
+                  (ngModelChange)="setCashReceived($event)"
                 />
                 <button
                   hlmBtn
@@ -707,8 +722,8 @@
                           </svg>
                           Sincronizado
                         </span>
-                      } @else if (sale.error) {
-                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 border border-rose-200" [title]="sale.error">
+                      } @else if (sale.sync_error) {
+                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 border border-rose-200" [title]="sale.sync_error">
                           <svg class="h-3 w-3 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                           </svg>
@@ -1090,4 +1105,260 @@
       </div>
     </div>
   }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL DE CAMBIO DE PRENDA POR TALLA / MODELO (CU17 - POLÍTICA 1)          -->
+  <!-- ========================================================================= -->
+  @if (showExchangeModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Cabecera -->
+        <header class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold">Cambio de Prenda por Talla / Modelo</h3>
+              <span class="rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 px-2 py-0.5 text-[10px] font-semibold">
+                CU17 - Política 1
+              </span>
+            </div>
+            <p class="text-xs text-slate-300">Si el precio nuevo es superior, el cambio solo se consolida si el cliente abona la diferencia.</p>
+          </div>
+          <button type="button" class="text-slate-400 hover:text-white transition" (click)="closeExchangeModal()">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <!-- Contenido -->
+        <div class="p-6 space-y-5 overflow-y-auto flex-1">
+          <!-- Paso 1: Búsqueda del Ticket de Venta -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-slate-800">1. Número de Ticket o UUID de la Venta Original</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-slate-900 focus:outline-none"
+                placeholder="Pega el ID o código de la venta original..."
+                [ngModel]="exchangeSaleIdInput()"
+                (ngModelChange)="exchangeSaleIdInput.set($event)"
+                (keydown.enter)="lookupSaleForExchange()"
+              />
+              <button
+                hlmBtn
+                type="button"
+                size="sm"
+                class="bg-slate-900 text-white text-xs hover:bg-slate-800"
+                [disabled]="loadingSaleLookupExchange()"
+                (click)="lookupSaleForExchange()"
+              >
+                {{ loadingSaleLookupExchange() ? 'Buscando...' : 'Buscar Ticket' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Paso 2: Selección de la Prenda Original Devuelta -->
+          @if (foundSaleForExchange()) {
+            <div class="space-y-2 rounded-xl bg-slate-50 p-4 border border-slate-200">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-slate-800">2. Selecciona la prenda a devolver del ticket</span>
+                <span class="text-slate-500">Total Venta: Bs {{ foundSaleForExchange()!.total_amount }}</span>
+              </div>
+
+              <div class="space-y-1.5">
+                @for (item of foundSaleForExchange()!.items; track item.id) {
+                  <button
+                    type="button"
+                    class="w-full text-left p-3 rounded-lg border transition flex items-center justify-between"
+                    [ngClass]="selectedOriginalVariantId() === item.variant_id
+                      ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300'"
+                    (click)="onSelectExchangeOriginalVariant(item.variant_id)"
+                  >
+                    <div>
+                      <p class="font-bold text-xs text-slate-900">{{ item.product_name }}</p>
+                      <p class="text-[11px] text-slate-500">SKU: {{ item.variant_sku }} | Cantidad: {{ item.quantity }}</p>
+                    </div>
+                    <span class="font-bold text-xs text-slate-800">Bs {{ item.unit_price }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Paso 3: Selección de la Nueva Prenda en Tienda -->
+          @if (selectedOriginalVariantId()) {
+            <div class="space-y-2 rounded-xl bg-slate-50 p-4 border border-slate-200">
+              <label class="block text-xs font-bold text-slate-800">3. Selecciona la nueva prenda o talla en catálogo</label>
+              <div class="max-h-40 overflow-y-auto space-y-1 divide-y divide-slate-100 bg-white rounded-lg border border-slate-200 p-2">
+                @for (prod of products(); track prod.id) {
+                  @for (variant of prod.variants; track variant.id) {
+                    <button
+                      type="button"
+                      class="w-full text-left p-2 rounded flex items-center justify-between text-xs transition"
+                      [ngClass]="selectedNewVariantId() === variant.id ? 'bg-indigo-50 font-semibold text-indigo-900' : 'hover:bg-slate-50'"
+                      (click)="onSelectExchangeNewVariant(variant.id)"
+                    >
+                      <div>
+                        <span>{{ prod.name }}</span>
+                        <span class="text-slate-400 text-[11px] ml-1">({{ variant.sku }})</span>
+                      </div>
+                      <span class="font-bold text-slate-700">Bs {{ variant.price }}</span>
+                    </button>
+                  }
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Paso 4: Cotización en Vivo de la Diferencia de Precio (Δ) -->
+          @if (loadingExchangeQuote()) {
+            <div class="p-4 text-center text-xs text-slate-500">Calculando diferencia comercial...</div>
+          } @else if (exchangeQuote()) {
+            <div class="rounded-xl border p-4 space-y-3" [ngClass]="exchangeQuote()!.requires_payment ? 'bg-amber-50/70 border-amber-300' : 'bg-emerald-50/70 border-emerald-300'">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-slate-900">4. Balance Financiero del Cambio</span>
+                <span class="font-semibold text-[11px] px-2 py-0.5 rounded" [ngClass]="exchangeQuote()!.requires_payment ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'">
+                  {{ exchangeQuote()!.requires_payment ? 'Cobro Requerido (Δ > 0)' : 'Sin Costo Adicional (Δ ≤ 0)' }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="p-2 bg-white/80 rounded border border-slate-200">
+                  <p class="text-[11px] text-slate-500">Precio Original Abonado</p>
+                  <p class="font-bold text-slate-800">Bs {{ exchangeQuote()!.original_unit_price }}</p>
+                </div>
+                <div class="p-2 bg-white/80 rounded border border-slate-200">
+                  <p class="text-[11px] text-slate-500">Precio Prenda Nueva</p>
+                  <p class="font-bold text-slate-800">Bs {{ exchangeQuote()!.new_unit_price }}</p>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-sm">
+                <span class="font-bold text-slate-900">Diferencia a Cobrar (Δ):</span>
+                <span class="text-base font-extrabold" [ngClass]="exchangeQuote()!.requires_payment ? 'text-amber-800' : 'text-emerald-800'">
+                  Bs {{ exchangeQuote()!.price_difference | number:'1.2-2' }}
+                </span>
+              </div>
+
+              <!-- Checkbox de Confirmación de Cobro Obligatorio si Δ > 0 -->
+              @if (exchangeQuote()!.requires_payment) {
+                <div class="rounded-lg bg-white p-3 border border-amber-300 space-y-2">
+                  <label class="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      class="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                      [checked]="differencePaid()"
+                      (change)="differencePaid.set(!differencePaid())"
+                    />
+                    <span class="text-xs text-slate-800 font-medium">
+                      Confirmo que el cliente ha abonado la diferencia de <strong>Bs {{ exchangeQuote()!.price_difference | number:'1.2-2' }}</strong> en mostrador (Regla Inviolable de Negocio).
+                    </span>
+                  </label>
+
+                  @if (differencePaid()) {
+                    <div class="flex items-center gap-3 pt-1">
+                      <span class="text-xs text-slate-500">Medio de Pago:</span>
+                      <label class="flex items-center gap-1 text-xs">
+                        <input type="radio" value="efectivo" [checked]="exchangePaymentMethod() === 'efectivo'" (change)="exchangePaymentMethod.set('efectivo')" />
+                        Efectivo
+                      </label>
+                      <label class="flex items-center gap-1 text-xs">
+                        <input type="radio" value="tarjeta" [checked]="exchangePaymentMethod() === 'tarjeta'" (change)="exchangePaymentMethod.set('tarjeta')" />
+                        Tarjeta / QR
+                      </label>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Paso 5: Inspección de Etiqueta y Estado de la Prenda -->
+          <div class="rounded-xl bg-slate-50 p-4 border border-slate-200 space-y-2">
+            <span class="block text-xs font-bold text-slate-800">5. Inspección Textil de la Prenda Devuelta</span>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                class="p-2.5 rounded-lg border text-left transition flex flex-col justify-between"
+                [ngClass]="exchangeCondition() === 'good_with_tags'
+                  ? 'border-emerald-600 bg-emerald-50/70 text-emerald-900 font-semibold'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+                (click)="exchangeCondition.set('good_with_tags')"
+              >
+                <span>✓ Con Etiqueta Intacta</span>
+                <span class="text-[10px] text-slate-500 font-normal mt-0.5">Sin señales de uso</span>
+              </button>
+              <button
+                type="button"
+                class="p-2.5 rounded-lg border text-left transition flex flex-col justify-between"
+                [ngClass]="exchangeCondition() === 'damaged_or_no_tags'
+                  ? 'border-rose-600 bg-rose-50/70 text-rose-900 font-semibold'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+                (click)="exchangeCondition.set('damaged_or_no_tags')"
+              >
+                <span>✕ Sin Etiqueta / Usada</span>
+                <span class="text-[10px] text-slate-500 font-normal mt-0.5">Operación bloqueada</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+          <button hlmBtn type="button" variant="outline" size="sm" class="text-xs" (click)="closeExchangeModal()">
+            Cancelar
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            size="sm"
+            class="bg-indigo-700 text-white text-xs hover:bg-indigo-800"
+            [disabled]="!exchangeQuote() || exchangeCondition() !== 'good_with_tags' || (exchangeQuote()!.requires_payment && !differencePaid()) || submittingExchange()"
+            (click)="processExchangeSubmit()"
+          >
+            {{ submittingExchange() ? 'Consolidando Cambio...' : 'Consolidar Cambio de Prenda' }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Comprobante de Cambio Consolidado -->
+  @if (showExchangeReceiptModal() && lastProcessedExchange()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-200 p-6 space-y-4 text-center">
+        <div class="h-12 w-12 rounded-full bg-indigo-100 text-indigo-700 mx-auto flex items-center justify-center">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Cambio Consolidado</h3>
+          <p class="text-xs text-slate-500">Inventario actualizado: prenda devuelta reingresada (+1) y prenda nueva egresada (-1).</p>
+        </div>
+
+        <div class="rounded-xl bg-slate-50 p-4 border border-slate-200 space-y-2 text-xs text-left">
+          <div class="flex justify-between">
+            <span class="text-slate-500">ID Operación:</span>
+            <span class="font-mono font-medium">{{ lastProcessedExchange()!.id.slice(0, 8) }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Diferencia de Precio:</span>
+            <span class="font-bold text-slate-800">Bs {{ lastProcessedExchange()!.price_difference }}</span>
+          </div>
+          <div class="flex justify-between text-emerald-700">
+            <span>Diferencia Cobrada:</span>
+            <span class="font-semibold">{{ lastProcessedExchange()!.difference_paid ? 'Sí (Abonada)' : 'No Requerida' }}</span>
+          </div>
+        </div>
+
+        <button hlmBtn type="button" class="w-full bg-slate-900 text-white text-xs hover:bg-slate-800" (click)="closeExchangeReceiptModal()">
+          Aceptar y Cerrar
+        </button>
+      </div>
+    </div>
+  }
+
 </section>

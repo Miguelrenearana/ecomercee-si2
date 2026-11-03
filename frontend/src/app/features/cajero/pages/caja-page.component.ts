@@ -20,6 +20,8 @@ import {
   BatchSyncRequest,
   BatchSyncSummary,
   CreateSaleRequest,
+  ExchangeQuoteResponse,
+  GarmentExchange,
   GarmentReturn,
   ReturnQuoteResponse,
   Sale,
@@ -320,6 +322,23 @@ export class CajaPageComponent {
   protected readonly lastProcessedReturn = signal<GarmentReturn | null>(null);
   protected readonly showReturnReceiptModal = signal(false);
 
+  // CU17: Señales para Cambio de Prenda por Talla/Modelo con Cobro de Diferencia
+  protected readonly showExchangeModal = signal(false);
+  protected readonly exchangeSaleIdInput = signal('');
+  protected readonly foundSaleForExchange = signal<Sale | null>(null);
+  protected readonly loadingSaleLookupExchange = signal(false);
+  protected readonly selectedOriginalVariantId = signal<string | null>(null);
+  protected readonly selectedNewVariantId = signal<string | null>(null);
+  protected readonly exchangeCondition = signal<'good_with_tags' | 'damaged_or_no_tags'>('good_with_tags');
+  protected readonly exchangeQuote = signal<ExchangeQuoteResponse | null>(null);
+  protected readonly loadingExchangeQuote = signal(false);
+  protected readonly differencePaid = signal(false);
+  protected readonly exchangePaymentMethod = signal<string>('efectivo');
+  protected readonly exchangeNotes = signal('');
+  protected readonly submittingExchange = signal(false);
+  protected readonly lastProcessedExchange = signal<GarmentExchange | null>(null);
+  protected readonly showExchangeReceiptModal = signal(false);
+
   constructor() {
     void this.searchProducts();
     this.refreshOutbox();
@@ -332,6 +351,11 @@ export class CajaPageComponent {
     } else {
       toast.success('Simulación de Modo Offline Desactivada: Conexión normal restaurada.');
     }
+  }
+
+  protected setCashReceived(value: any): void {
+    const num = Number(value);
+    this.cashReceived.set(!isNaN(num) && value !== null && value !== '' ? num : null);
   }
 
   protected setExactCash(): void {
@@ -357,6 +381,24 @@ export class CajaPageComponent {
     } finally {
       this.loadingProducts.set(false);
     }
+  }
+
+  protected removeItem(variantId: string): void {
+    this.selectedItems.set(this.selectedItems().filter((item) => item.variant_id !== variantId));
+  }
+
+  protected increaseItem(variantId: string): void {
+    const items = this.selectedItems().map((item) =>
+      item.variant_id === variantId ? { ...item, quantity: item.quantity + 1 } : item
+    );
+    this.selectedItems.set(items);
+  }
+
+  protected decreaseItem(variantId: string): void {
+    const items = this.selectedItems()
+      .map((item) => (item.variant_id === variantId ? { ...item, quantity: item.quantity - 1 } : item))
+      .filter((item) => item.quantity > 0);
+    this.selectedItems.set(items);
   }
 
   protected addVariant(product: CatalogProduct, variant: CatalogProductVariant): void {
@@ -615,5 +657,140 @@ export class CajaPageComponent {
 
   protected closeReturnReceiptModal(): void {
     this.showReturnReceiptModal.set(false);
+  }
+
+  // =========================================================================
+  // CU17: Métodos de Cambio de Prenda con Cobro de Diferencia (Política 1)
+  // =========================================================================
+  protected openExchangeModal(): void {
+    this.exchangeSaleIdInput.set('');
+    this.foundSaleForExchange.set(null);
+    this.selectedOriginalVariantId.set(null);
+    this.selectedNewVariantId.set(null);
+    this.exchangeQuote.set(null);
+    this.exchangeCondition.set('good_with_tags');
+    this.differencePaid.set(false);
+    this.exchangeNotes.set('');
+    this.showExchangeModal.set(true);
+  }
+
+  protected closeExchangeModal(): void {
+    this.showExchangeModal.set(false);
+  }
+
+  protected async lookupSaleForExchange(): Promise<void> {
+    const saleId = this.exchangeSaleIdInput().trim();
+    if (!saleId) {
+      toast.error('Ingresa el identificador o ticket de la venta.');
+      return;
+    }
+
+    this.loadingSaleLookupExchange.set(true);
+    try {
+      const resp = await firstValueFrom(this.salesApi.getSale(saleId, this.branchId() ?? undefined));
+      this.foundSaleForExchange.set(resp.data ?? null);
+      this.selectedOriginalVariantId.set(null);
+      this.selectedNewVariantId.set(null);
+      this.exchangeQuote.set(null);
+      toast.success('Venta localizada para cambio.');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'No se encontró la venta especificada en esta sucursal.'));
+      this.foundSaleForExchange.set(null);
+    } finally {
+      this.loadingSaleLookupExchange.set(false);
+    }
+  }
+
+  protected async onSelectExchangeOriginalVariant(variantId: string): Promise<void> {
+    this.selectedOriginalVariantId.set(variantId);
+    this.selectedNewVariantId.set(null);
+    this.exchangeQuote.set(null);
+  }
+
+  protected async onSelectExchangeNewVariant(newVariantId: string): Promise<void> {
+    this.selectedNewVariantId.set(newVariantId);
+    const sale = this.foundSaleForExchange();
+    const origVarId = this.selectedOriginalVariantId();
+    if (!sale || !origVarId) return;
+
+    this.loadingExchangeQuote.set(true);
+    try {
+      const resp = await firstValueFrom(
+        this.salesApi.quoteExchange(
+          {
+            sale_id: sale.id,
+            original_variant_id: origVarId,
+            new_variant_id: newVariantId,
+          },
+          this.branchId() ?? undefined
+        )
+      );
+      this.exchangeQuote.set(resp.data ?? null);
+      // Si la diferencia es <= 0, no requiere cobro obligatorio
+      if (!resp.data?.requires_payment) {
+        this.differencePaid.set(true);
+      } else {
+        this.differencePaid.set(false);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Error al cotizar la diferencia de precio del cambio.'));
+      this.exchangeQuote.set(null);
+    } finally {
+      this.loadingExchangeQuote.set(false);
+    }
+  }
+
+  protected async processExchangeSubmit(): Promise<void> {
+    const sale = this.foundSaleForExchange();
+    const origVarId = this.selectedOriginalVariantId();
+    const newVarId = this.selectedNewVariantId();
+    const quote = this.exchangeQuote();
+
+    if (!sale || !origVarId || !newVarId || !quote) {
+      toast.error('Selecciona tanto la prenda devuelta como la prenda nueva.');
+      return;
+    }
+
+    if (this.exchangeCondition() !== 'good_with_tags') {
+      toast.error('Política 1: La prenda debe contar con su etiqueta textil intacta para autorizar el cambio.');
+      return;
+    }
+
+    if (quote.requires_payment && !this.differencePaid()) {
+      toast.error(`Política 1: El cliente debe abonar la diferencia de Bs ${quote.price_difference.toFixed(2)} para consolidar el cambio.`);
+      return;
+    }
+
+    this.submittingExchange.set(true);
+    try {
+      const resp = await firstValueFrom(
+        this.salesApi.processExchange(
+          {
+            sale_id: sale.id,
+            original_variant_id: origVarId,
+            new_variant_id: newVarId,
+            condition: this.exchangeCondition(),
+            difference_paid: this.differencePaid(),
+            payment_method: quote.requires_payment ? this.exchangePaymentMethod() : null,
+            notes: this.exchangeNotes().trim() || undefined,
+          },
+          this.branchId() ?? undefined
+        )
+      );
+
+      this.lastProcessedExchange.set(resp.data ?? null);
+      this.showExchangeModal.set(false);
+      this.showExchangeReceiptModal.set(true);
+      toast.success('Cambio de prenda consolidado exitosamente.');
+      await this.searchProducts();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'No se pudo procesar el cambio de prenda.'));
+    } finally {
+      this.submittingExchange.set(false);
+    }
+  }
+
+  protected closeExchangeReceiptModal(): void {
+    this.showExchangeReceiptModal.set(false);
   }
 }

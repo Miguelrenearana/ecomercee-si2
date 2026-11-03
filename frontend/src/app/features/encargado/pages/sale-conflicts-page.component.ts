@@ -10,7 +10,7 @@ import { HlmCardImports } from '../../../components/card/src';
 import { HlmInputImports } from '../../../components/input/src';
 import { HlmTextareaImports } from '../../../components/textarea/src';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
-import { SessionService } from '../../../core/services/session.service';
+import { SessionService } from '../../shared/services/session.service';
 import {
   SaleConflict,
   SaleConflictResolutionType,
@@ -70,7 +70,7 @@ export class SaleConflictsPageComponent {
   async loadConflicts(): Promise<void> {
     this.loading.set(true);
     try {
-      const branchId = this.session.user()?.branch_id;
+      const branchId = this.session.user()?.branch_id ?? undefined;
       const resp = await firstValueFrom(this.salesApi.listSaleConflicts(branchId));
       this.conflicts.set(resp.data ?? []);
     } catch (err) {
@@ -109,7 +109,7 @@ export class SaleConflictsPageComponent {
           this.resolutionType() === 'substitute' ? this.substituteVariantId().trim() : null,
       };
 
-      const branchId = this.session.user()?.branch_id;
+      const branchId = this.session.user()?.branch_id ?? undefined;
       const resp = await firstValueFrom(
         this.salesApi.resolveSaleConflict(conflict.sale_id, payload, branchId)
       );
