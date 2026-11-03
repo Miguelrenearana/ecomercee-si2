@@ -148,6 +148,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/proveedor/pages/provider-products-page.component').then((m) => m.ProviderProductsPageComponent),
       },
       {
+      {
+        path: 'encargado/sale-conflicts',
+        canActivate: [roleGuard(['encargado', 'administrador'])],
+        loadComponent: () =>
+          import('./features/encargado/pages/sale-conflicts-page.component').then(
+            (m) => m.SaleConflictsPageComponent,
+          ),
+      },
         path: 'encargado/sales',
         canActivate: [roleGuard(['encargado'])],
         loadComponent: () => import('./features/shared/pages/sales-history-page.component').then((m) => m.SalesHistoryPageComponent),

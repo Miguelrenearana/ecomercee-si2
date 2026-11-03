@@ -214,6 +214,8 @@ export class AppShellComponent {
               { label: 'Solicitudes', route: '/app/encargado/replenishment', icon: 'lucideClipboardList' },
               { label: 'Promociones', route: '/app/encargado/promotions', icon: 'lucideTicket' },
               { label: 'Ventas', route: '/app/encargado/sales', icon: 'lucideShoppingCart' },
+              { label: 'Conflictos Offline', route: '/app/encargado/sale-conflicts', icon: 'lucideClipboardList' },
+
             ],
           },
         ];
