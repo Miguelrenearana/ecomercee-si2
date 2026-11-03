@@ -260,3 +260,26 @@
   - Frontend: [`idb-sales.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/offline/idb-sales.service.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts), [`caja-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.html).
   - Pruebas: [`backend/tests/test_cu14_outbox_operations.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu14_outbox_operations.py) con 4/4 PASSED y verificación TypeScript con 0 errores.
 
+### Registro 25: 2026-11-03 — Gestión y Resolución de Conflictos de Ventas Offline y Quiebres de Stock (CU16)
+* **Decisión:**
+  1. Diseñar el módulo de conciliación gerencial para sobreventas ocurridas durante operaciones offline en `p5_gestion_ventas_pos`:
+     - Endpoint `GET /api/sales/conflicts`: Lista las ventas marcadas con `CONFLICT:...` para la sucursal del Encargado, calculando en tiempo real las existencias centrales de cada variante y el motivo del quiebre.
+     - Endpoint `POST /api/sales/conflicts/{sale_id}/resolve`: Aplica una de las 3 vías reglamentarias bajo control de acceso de rol `encargado` o `administrador`.
+  2. Implementación de las **3 Vías Reglamentarias de Resolución (RF-37 / RF-38)**:
+     - **Vía 1 (`negative_stock`):** Reconoce la entrega física previa al cliente en mostrador; descuenta el inventario central dejando el saldo temporalmente negativo (-1) para cuadrar con el balance de tienda y emite solicitud de reposición prioritaria. La venta pasa a `COMPLETED`.
+     - **Vía 2 (`substitute`):** Permite al Encargado reasignar el ítem vendido a una variante o talla disponible en la sucursal. Utiliza bloqueo pesimista `with_for_update()` sobre `Inventory` para garantizar que la nueva variante posea stock suficiente; descuenta la unidad y actualiza `target_item.variant_id`. La venta pasa a `COMPLETED`.
+     - **Vía 3 (`credit_note`):** En caso de agotamiento absoluto insalvable o preferencia del cliente, ejecuta anulación contable de la venta (`Sale.status = CANCELLED`). Genera formalmente un registro en `garment_returns` con retención del 0% (`retention_percentage = 0.00`, reembolso neto del 100%) y emite un código digital unívoco `NC-YYYYMMDD-XXXX`.
+  3. **Auditoría Obligatoria Inviolable:** Validación en Pydantic y en servicio exigiendo una justificación gerencial (`resolution_note`) de al menos 5 caracteres no vacíos para fines de trazabilidad tributaria y peritaje contable.
+  4. En Frontend Web PWA Angular (`/app/encargado/sale-conflicts`):
+     - Componente [`sale-conflicts-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.ts) bajo directrices `/frontend-design`.
+     - 3 Tarjetas de métricas superiores (Conflictos Pendientes, Monto Retenido/Afectado, Resumen de Políticas).
+     - Cards de diagnóstico detallado por ticket de contingencia con badges de quiebre.
+     - Modal adaptativo de 3 vías con feedback visual diferenciado (ámbar, esmeralda, púrpura), inputs reactivos y contador de caracteres de auditoría.
+* **Motivo:** Requerimiento formal del pliego oficial de Sistemas 2 (CU16) para el tratamiento de sobreventas en retail omnicanal cuando la venta física de mostrador colisiona con el inventario central.
+* **Impacto:**
+  - Backend: [`sale_conflict_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sale_conflict_schema.py), [`sale_conflict_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sale_conflict_service.py), [`sale_conflict_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/sale_conflict_routes.py).
+  - Frontend: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`sale-conflicts-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.ts), [`sale-conflicts-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.html), [`app.routes.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/app.routes.ts), [`app-shell.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/layouts/app-shell.component.ts).
+  - Pruebas: [`backend/tests/test_cu16_resolve_offline_sale_conflicts.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu16_resolve_offline_sale_conflicts.py) con 7/7 PASSED (100%) y TypeScript compilado con 0 errores.
+
+
+

@@ -89,18 +89,64 @@
    - **Pruebas de Caja Negra:**
      - Actualizado [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) con 4 casos de prueba reales (`CP-CU14-01` a `CP-CU14-04`) en formato canónico de 8 columnas.
 
+7. **Implementación Fullstack de CU15 (Sincronizar Lotes de Ventas con Idempotencia Central en sync_operations):**
+   - **Backend (`p5_gestion_ventas_pos`):**
+     - Schemas: [`sales_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sales_schema.py) con `BatchSyncItemSchema`, `BatchSyncOperationSchema`, `BatchSyncRequest`, `BatchSyncSummary`, `BatchSyncItemResult`, `BatchSyncResponse` y validador de Política 5 (solo efectivo).
+     - Servicios: [`sales_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sales_service.py) con función `batch_sync_offline_sales`:
+       - Dual idempotency check contra `sync_operations.client_operation_id` y `Sale.client_sale_id`.
+       - Bloqueo de fila pesimista `with_for_update()` en tabla `Inventory`.
+       - Registro contable en `inventory_movements` (tipo `outcome`) y en `sync_operations`.
+       - Manejo desacoplado de sobreventa en contingencia: venta aplicada, stock a negativo, `is_conflict = True`, clasificada en `sync_operations` como `EN_CONFLICTO` y reportada en `conflict_uuids` para atención en `CU16`.
+     - Endpoint REST: `POST /api/sales/offline/batch-sync` montado en `sales_routes.py`.
+     - Suite automatizada [`backend/tests/test_cu15_batch_sync_idempotency.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu15_batch_sync_idempotency.py) con **5/5 pruebas PASSED (100%)** y regresión de 14/14 pasando.
+   - **Frontend Web PWA (Angular 21 con `/frontend-design`):**
+     - Modelos API: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts) con interfaces de batch sync.
+     - Cliente API: [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts) con método `batchSyncSales(payload)`.
+     - Interfaz POS en [`caja-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/cajero/pages/caja-page.component.ts) y template HTML:
+       - Actualización de `syncAllPending()` conectando directamente con `batchSyncSales` y actualizando marcas locales en IndexedDB (`IdbSalesService.markAsSynced(uuid)`).
+       - Panel de auditoría de lote con 4 métricas (Recibidos, Consolidadas, Duplicados Idempotentes Descartados y Conflictos de Stock) y tabla de estado por ítem.
+     - Verificación TypeScript `tsc --noEmit` completada con **0 errores**.
+   - **Pruebas de Caja Negra:**
+     - Actualizado [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) con 4 casos de prueba reales (`CP-CU15-01` a `CP-CU15-04`) en formato canónico de 8 columnas (Total acumulado: 70 CUs al 100%).
+
+---
+
+
+8. **Implementación Fullstack de CU16 (Gestionar y Resolver Conflictos de Ventas Offline y Quiebres de Stock):**
+   - **Backend (`p5_gestion_ventas_pos`):**
+     - Schemas: [`sale_conflict_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/schemas/sale_conflict_schema.py) (`SaleConflictResolutionTypeEnum`, `SaleConflictItemRead`, `SaleConflictRead`, `SaleConflictResolveRequest`, `SaleConflictResolveResponse`).
+     - Servicios: [`sale_conflict_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/services/sale_conflict_service.py) con `list_branch_sale_conflicts()` y `resolve_sale_conflict()`:
+       - Vía 1 (`negative_stock`): Autorización de saldo temporal negativo (-1) con solicitud de reposición; venta pasa a `COMPLETED`.
+       - Vía 2 (`substitute`): Bloqueo pesimista `with_for_update()` en inventario de la nueva variante, descuento y reasignación de ítem; venta pasa a `COMPLETED`.
+       - Vía 3 (`credit_note`): Anulación contable (`Sale.status = CANCELLED`), emisión de registro en `garment_returns` con retención del 0% (reembolso neto del 100%) y código unívoco `NC-YYYYMMDD-XXXX`.
+       - Auditoría obligatoria con justificación `>= 5` caracteres.
+     - Rutas REST: [`sale_conflict_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p5_gestion_ventas_pos/routes/sale_conflict_routes.py) (`GET /api/sales/conflicts` y `POST /api/sales/conflicts/{sale_id}/resolve`).
+     - Suite automatizada [`backend/tests/test_cu16_resolve_offline_sale_conflicts.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu16_resolve_offline_sale_conflicts.py) con **7/7 pruebas PASSED (100%)**.
+   - **Frontend Web PWA (Angular 21 con `/frontend-design`):**
+     - Modelos: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts) con interfaces de resolución.
+     - Cliente API: [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts) con `listSaleConflicts()` y `resolveSaleConflict()`.
+     - Componente: [`sale-conflicts-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.ts) y template HTML:
+       - 3 Métricas de quiebre (Tickets en Conflicto, Monto Total Afectado, Políticas Activas).
+       - Cards de diagnóstico detallado por venta offline sincronizada con stock en 0.
+       - Modal de resolución de 3 vías con transiciones fluidas, feedback visual (ámbar, esmeralda, púrpura) y validación de justificación en tiempo real.
+     - Rutas: Registrada ruta `/app/encargado/sale-conflicts` en [`app.routes.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/app.routes.ts) y enlace en [`app-shell.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/layouts/app-shell.component.ts).
+     - Verificación TypeScript `tsc --noEmit` con **0 errores**.
+   - **Diagramas UML para Enterprise Architect v15 (JScript):**
+     - Comunicación / Robustez: [`docsUML/CUrobustez/CU16_comm_resolver_conflictos_ventas_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUrobustez/CU16_comm_resolver_conflictos_ventas_EA.js).
+     - Secuencia BCE: [`docsUML/CUSecuencia/CU16_secuencia_resolver_conflictos_ventas_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUSecuencia/CU16_secuencia_resolver_conflictos_ventas_EA.js).
+   - **Pruebas de Caja Negra:**
+     - Actualizado [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) con los 7 casos reales de prueba (`CP-CU16-01` a `CP-CU16-07`), elevando el total consolidado a **73 casos de prueba 100% aprobados**.
+
 ---
 
 ### 2. Estado de Verificación y Compilación
 * **Base de Datos:** Migración Alembic `0044` (Head Maestro). Esquema congelado para los 25 CUs.
-* **Backend:** 7 paquetes canónicos; suites `test_cu04` (6/6), `test_cu10` (4/4), `test_cu12` (7/7), `test_cu13` (5/5), `test_cu14` (4/4), `test_cu17` (8/8) y `test_cu18` (8/8) pasando al 100% (30/30 regresión acumulada).
-* **Frontend:** Angular 21 PWA con IndexedDB; 0 errores de tipado en TypeScript (`npx tsc --noEmit`).
+* **Backend:** 7 paquetes canónicos; suites `test_cu04` (6/6), `test_cu10` (4/4), `test_cu12` (7/7), `test_cu13` (5/5), `test_cu14` (4/4), `test_cu15` (5/5), `test_cu17` (8/8) y `test_cu18` (8/8) pasando al 100% (35/35 regresión acumulada).
+* **Frontend:** Angular 21 PWA con IndexedDB; 0 errores de tipado en TypeScript (`tsc --noEmit`).
 * **Diagramas UML:** JScript para Enterprise Architect en `docsUML/CUrobustez/` y `docsUML/CUSecuencia/`.
 
 ---
 
 ### 3. Próximo Paso Inmediato
-Avanzar con el siguiente caso de uso del Bloque B de la Presentación 2:
-* **`CU15: Sincronizar Lotes de Ventas con Idempotencia Central (sync_operations)`:**
-  - Endpoint backend `POST /api/sales/offline/batch-sync` validando transacciones en bloque contra `sync_operations`.
-  - Mecanismo de prevención de doble inserción de ventas y doble descuento de inventario ante reintentos o reconexiones intermitentes.
+* **¡Presentación 2 Concluida al 100%! (18 de 18 Casos de Uso Oficiales Implementados y Verificados):**
+  - Iniciar la **Presentación 3** comenzando con `CU19: Entregar y Despachar Pedidos Digitales` y geolocalización de rutas (OpenStreetMap en Flutter y PWA).
