@@ -15,10 +15,21 @@ from app.packages.p4_gestion_compras_reservas.models.reservation import Reservat
 from app.packages.p4_gestion_compras_reservas.models.reservation_item import ReservationItem
 from app.packages.p5_gestion_ventas_pos.models.sale import Sale
 from app.packages.p5_gestion_ventas_pos.models.sale_item import SaleItem
+from app.packages.p5_gestion_ventas_pos.models.sync_operation import SyncOperation
 from app.packages.p2_gestion_productos_catalogo.models.size import Size
 from app.packages.p2_gestion_productos_catalogo.models.color import Color
 from app.packages.p4_gestion_compras_reservas.schemas.order_schema import PaymentMethodEnum, PaymentStatusEnum
-from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import SaleCreate, SaleItemRead, SaleRead, SaleStatusEnum, SaleTypeEnum
+from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import (
+    BatchSyncItemResult,
+    BatchSyncRequest,
+    BatchSyncResponse,
+    BatchSyncSummary,
+    SaleCreate,
+    SaleItemRead,
+    SaleRead,
+    SaleStatusEnum,
+    SaleTypeEnum,
+)
 from app.packages.p2_gestion_productos_catalogo.schemas.catalog_enums import ProductStatusEnum
 from app.packages.p3_gestion_inventario_disponibilidad.schemas.inventory_schema import InventoryMovementTypeEnum
 from app.packages.p4_gestion_compras_reservas.schemas.reservation_schema import ReservationStatusEnum
@@ -381,3 +392,226 @@ def check_offline_sales_status(
         "synced_ids": list(synced_set),
         "missing_ids": missing_list,
     }
+
+
+# =========================================================================
+# LÓGICA DEL CU15: Sincronización de Lotes con Idempotencia (sync_operations)
+# =========================================================================
+def batch_sync_offline_sales(
+    db: Session,
+    payload: BatchSyncRequest,
+    tenant_id: UUID,
+    current_user_id: UUID | None = None,
+) -> BatchSyncResponse:
+    """
+    Sincronización en lote de ventas desconectadas con idempotencia central mediante sync_operations (CU15).
+    Garantiza que transacciones reenviadas por latencia o pérdida de confirmación no dupliquen
+    ventas ni descuenten existencias de inventario dos veces.
+    """
+    total_received = len(payload.operations)
+    if total_received == 0:
+        return BatchSyncResponse(
+            status="success",
+            summary=BatchSyncSummary(
+                total_received=0,
+                applied=0,
+                duplicates_ignored=0,
+                conflicts=0,
+            ),
+            processed_uuids=[],
+            conflict_uuids=[],
+            details=[],
+        )
+
+    # 1. Validar sucursal perteneciente al tenant
+    branch = db.query(Branch).filter(Branch.id == payload.branch_id, Branch.tenant_id == tenant_id).first()
+    if not branch:
+        raise ValueError("Sucursal no encontrada o no pertenece a la empresa autenticada.")
+
+    # 2. Consultar operaciones existentes para idempotencia
+    client_ids = [op.client_sale_id for op in payload.operations]
+
+    existing_sync_ops = {
+        row[0]
+        for row in db.query(SyncOperation.client_operation_id)
+        .filter(
+            SyncOperation.tenant_id == tenant_id,
+            SyncOperation.client_operation_id.in_([str(cid) for cid in client_ids]),
+        )
+        .all()
+    }
+    existing_sales = {
+        row[0]
+        for row in db.query(Sale.client_sale_id)
+        .filter(Sale.tenant_id == tenant_id, Sale.client_sale_id.in_(client_ids))
+        .all()
+        if row[0] is not None
+    }
+    already_processed_ids = existing_sync_ops.union({str(sid) for sid in existing_sales})
+
+    applied = 0
+    duplicates_ignored = 0
+    conflicts = 0
+    processed_uuids: list[UUID] = []
+    conflict_uuids: list[UUID] = []
+    details: list[BatchSyncItemResult] = []
+
+    now_utc = datetime.now(timezone.utc)
+
+    for op in payload.operations:
+        op_uuid_str = str(op.client_sale_id)
+
+        # Regla de Idempotencia: Si ya fue procesado, se ignora sin error ni doble descuento
+        if op_uuid_str in already_processed_ids:
+            duplicates_ignored += 1
+            processed_uuids.append(op.client_sale_id)
+            details.append(
+                BatchSyncItemResult(
+                    client_sale_id=op.client_sale_id,
+                    status="duplicate_ignored",
+                    message="Operación previamente procesada e idempotente.",
+                )
+            )
+            continue
+
+        # Regla Política 5: Solo efectivo
+        payment_method_norm = (op.payment_method or "cash").strip().lower()
+        if payment_method_norm not in ("cash", "efectivo"):
+            raise ValueError(f"Venta offline {op.client_sale_id} rechazada: pago debe ser en efectivo.")
+
+        # Verificar inventario y descontar con bloqueo pesimista
+        is_conflict = False
+        items_to_persist = []
+        for item in op.items:
+            variant = (
+                db.query(ProductVariant)
+                .join(Product, Product.id == ProductVariant.product_id)
+                .filter(ProductVariant.id == item.variant_id, Product.tenant_id == tenant_id)
+                .first()
+            )
+            if not variant:
+                raise ValueError(f"Variante de producto {item.variant_id} no encontrada en el catálogo.")
+
+            unit_price = item.unit_price if item.unit_price is not None else variant.price
+            items_to_persist.append((variant, item.quantity, unit_price))
+
+            inventory = _get_inventory_for_update(db, item.variant_id, payload.branch_id)
+            if not inventory:
+                inventory = Inventory(
+                    tenant_id=tenant_id,
+                    branch_id=payload.branch_id,
+                    variant_id=item.variant_id,
+                    quantity=0,
+                )
+                db.add(inventory)
+                db.flush()
+
+            if inventory.quantity < item.quantity:
+                is_conflict = True
+                inventory.quantity -= item.quantity
+            else:
+                inventory.quantity -= item.quantity
+
+            mov = InventoryMovement(
+                variant_id=item.variant_id,
+                branch_id=payload.branch_id,
+                movement_type=InventoryMovementTypeEnum.outcome,
+                quantity=item.quantity,
+                note=f"Sincronización Batch Venta Offline Ticket {op_uuid_str[:8].upper()}",
+                created_by=op.cashier_id or current_user_id,
+            )
+            db.add(mov)
+
+        # Crear venta
+        sale_created_at = op.created_at or now_utc
+        new_sale = Sale(
+            tenant_id=tenant_id,
+            branch_id=payload.branch_id,
+            user_id=op.cashier_id or current_user_id,
+            total_amount=op.total_amount,
+            subtotal=op.total_amount,
+            discount_amount=Decimal("0.00"),
+            payment_method=PaymentMethodEnum.cash,
+            payment_status=PaymentStatusEnum.paid,
+            status=SaleStatusEnum.completed,
+            is_offline=True,
+            client_sale_id=op.client_sale_id,
+            synced_at=now_utc,
+            created_at=sale_created_at,
+            currency="BOB",
+            cash_reference=f"Offline Batch Sync - Ticket {op_uuid_str[:8].upper()}",
+        )
+        db.add(new_sale)
+        db.flush()
+
+        # Crear ítems de venta
+        for variant, qty, price in items_to_persist:
+            line_total = price * qty
+            sale_item = SaleItem(
+                tenant_id=tenant_id,
+                sale_id=new_sale.id,
+                variant_id=variant.id,
+                quantity=qty,
+                unit_price=price,
+                line_total=line_total,
+                product_id=variant.product_id,
+                product_name=variant.product.name if variant.product else str(variant.product_id),
+                variant_sku=variant.sku,
+                size_id=variant.size_id,
+                color_id=variant.color_id,
+                image_url=variant.image_url,
+                image_public_id=variant.image_public_id,
+            )
+            db.add(sale_item)
+
+        # Registrar en sync_operations para blindar idempotencia
+        sync_op = SyncOperation(
+            tenant_id=tenant_id,
+            client_operation_id=op_uuid_str,
+            operation_type="SALE_OFFLINE",
+            payload=op.model_dump(mode="json"),
+            status="EN_CONFLICTO" if is_conflict else "PROCESADO",
+            synced_at=now_utc,
+        )
+        db.add(sync_op)
+        already_processed_ids.add(op_uuid_str)
+
+        if is_conflict:
+            conflicts += 1
+            conflict_uuids.append(op.client_sale_id)
+            details.append(
+                BatchSyncItemResult(
+                    client_sale_id=op.client_sale_id,
+                    status="conflict",
+                    sale_id=new_sale.id,
+                    message="Venta sincronizada con advertencia de quiebre de stock concurrente.",
+                )
+            )
+        else:
+            applied += 1
+            details.append(
+                BatchSyncItemResult(
+                    client_sale_id=op.client_sale_id,
+                    status="applied",
+                    sale_id=new_sale.id,
+                    message="Venta sincronizada exitosamente.",
+                )
+            )
+
+        processed_uuids.append(op.client_sale_id)
+
+    db.commit()
+
+    return BatchSyncResponse(
+        status="success",
+        summary=BatchSyncSummary(
+            total_received=total_received,
+            applied=applied,
+            duplicates_ignored=duplicates_ignored,
+            conflicts=conflicts,
+        ),
+        processed_uuids=processed_uuids,
+        conflict_uuids=conflict_uuids,
+        details=details,
+    )
+

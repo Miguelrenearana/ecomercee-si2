@@ -6,8 +6,13 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_branch_id, require_roles
 from app.core.database import get_db
 from app.schemas.enums import RolEnum
-from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import OfflineStatusCheckRequest, SaleCreate
+from app.packages.p5_gestion_ventas_pos.schemas.sales_schema import (
+    BatchSyncRequest,
+    OfflineStatusCheckRequest,
+    SaleCreate,
+)
 from app.packages.p5_gestion_ventas_pos.services.sales_service import (
+    batch_sync_offline_sales,
     check_offline_sales_status,
     create_sale,
     get_sale,
@@ -97,3 +102,36 @@ async def check_offline_sales_status_route(
     tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
     result = check_offline_sales_status(db, payload.client_sale_ids, tenant_id=tenant_id)
     return response(status_code=200, message="Estado de operaciones offline verificado", data=result)
+
+
+# =========================================================================
+# LÓGICA DEL CU15: Sincronización en Lote con Idempotencia Central
+# =========================================================================
+@router.post("/offline/batch-sync")
+async def batch_sync_offline_sales_route(
+    payload: BatchSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_roles(RolEnum.cajero, RolEnum.encargado, RolEnum.administrador)),
+):
+    tenant_id = UUID(current_user["tenant_id"]) if current_user.get("tenant_id") else None
+    if not tenant_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tenant ID es requerido para sincronización.")
+
+    user_id = UUID(current_user["sub"]) if current_user.get("sub") else None
+
+    try:
+        result = batch_sync_offline_sales(
+            db=db,
+            payload=payload,
+            tenant_id=tenant_id,
+            current_user_id=user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return response(
+        status_code=status.HTTP_200_OK,
+        message=f"Lote sincronizado: {result.summary.applied} aplicadas, {result.summary.duplicates_ignored} duplicados ignorados, {result.summary.conflicts} conflictos.",
+        data=result.model_dump(mode="json"),
+    )
+
