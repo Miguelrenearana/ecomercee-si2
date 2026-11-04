@@ -281,5 +281,25 @@
   - Frontend: [`sale.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/sale.model.ts), [`sales-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/sales-api.service.ts), [`sale-conflicts-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.ts), [`sale-conflicts-page.component.html`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/encargado/pages/sale-conflicts-page.component.html), [`app.routes.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/app.routes.ts), [`app-shell.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/layouts/app-shell.component.ts).
   - Pruebas: [`backend/tests/test_cu16_resolve_offline_sale_conflicts.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu16_resolve_offline_sale_conflicts.py) con 7/7 PASSED (100%) y TypeScript compilado con 0 errores.
 
+### Registro 26: 2026-11-03 — Geolocalización de Sucursales y Trazado de Rutas con OpenStreetMap / ORS (CU19)
+* **Decisión:**
+  1. **Estrategia Híbrida de Ruteo sin Dependencias Bloqueantes:**
+     - Diseñar [`routing_service.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/routing_service.dart) con arquitectura desacoplada de 3 niveles:
+       - **Nivel 1 (OSRM Público sobre OpenStreetMap):** Consume `router.project-osrm.org` (`driving` y `walking`) sin requerir API Key obligatoria para la defensa del proyecto y evaluación docente.
+       - **Nivel 2 (OpenRouteService Oficial):** Admite inyección de API Key de ORS (`api.openrouteservice.org`) si se configura, con decodificación de polilíneas GeoJSON.
+       - **Nivel 3 (Fallback Geodésico Haversine):** Si no hay conectividad externa o ambos proveedores están inaccesibles, calcula la distancia ortodrómica radial y dibuja una línea directa de cortesía, estimando tiempos de viaje basados en velocidades promedio (40 km/h auto, 4.5 km/h a pie).
+  2. **Consumo de Sucursales con Aislamiento Multitenant:**
+     - Implementar endpoint público y optimizado en backend: `GET /api/branches/public` en `p1_gestion_usuarios_acceso/routes/branch_routes.py`.
+     - Permite a la app móvil Flutter obtener las sucursales del tenant autenticado o seleccionado con sus coordenadas (`latitude`, `longitude`), dirección, teléfono y horarios de apertura.
+  3. **Población Geográfica en Seed (`seed_saas.py`):**
+     - Georreferenciadas con precisión métrica real las 3 sucursales de *Boutique Elegance* en Santa Cruz de la Sierra (Central René Moreno, Equipetrol Av. San Martín, Ventura Mall 4to Anillo) y la sucursal de *Moda Urbana* en Cochabamba.
+  4. **Diseño Frontend Mobile de Alta Gama (`frontend-design`):**
+     - Componente [`branches_map_page.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/branches_map_page.dart) con paleta midnight/champagne gold, pines personalizados con halo radiante, selector flotante de modo de transporte (`driving` / `walking`), tarjeta modal inferior de detalle con botón "¿Cómo llegar?" y trazado de polilíneas interactivas con `flutter_map`.
+* **Motivo:** Cumplimiento del pliego de Sistemas 2 (CU19 de la 3ra Presentación) para geolocalización de sucursales físicas y asistencia de navegación multimodal para clientes en la app Flutter sin incurrir en cuotas privativas ni fallos por falta de llaves en la evaluación.
+* **Impacto:**
+  - Backend: [`branch_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p1_gestion_usuarios_acceso/routes/branch_routes.py), [`seed_saas.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/seed_saas.py), [`test_cu19_branch_public_map.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu19_branch_public_map.py) (2/2 PASSED).
+  - Mobile Flutter: [`pubspec.yaml`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/pubspec.yaml), [`AndroidManifest.xml`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/android/app/src/main/AndroidManifest.xml), [`catalog_models.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/catalog/catalog_models.dart), [`routing_models.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/routing_models.dart), [`routing_service.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/routing_service.dart), [`branches_map_controller.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/branches_map_controller.dart), [`branches_map_page.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/branches_map/branches_map_page.dart), [`routes.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/app/routes.dart), [`management_page.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/lib/features/management/management_page.dart), [`routing_service_test.dart`](file:///c:/Users/PERSONAL/ecommerce-SI2/mobile/test/routing_service_test.dart).
+
+
 
 

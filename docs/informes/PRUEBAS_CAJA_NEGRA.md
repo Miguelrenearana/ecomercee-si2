@@ -265,14 +265,36 @@ Las pruebas de caja negra evalúan la funcionalidad del sistema basándose exclu
 
 ---
 
+### 3.20. CU21: Exportar Reportes Empresariales a Formatos PDF y Excel (Carril B - Reportes)
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `sales`, `sale_items`, `orders`, `order_items`, `inventory`, `inventory_movements`, `branches`, `companies`.
+- **Librerías de Exportación:** ReportLab 5.1.0 (PDF con Canvas numerado, modo apaisado `landscape(letter)`, membrete dinámico) y OpenPyXL 3.1.5 (hoja de cálculo `.xlsx` con estilos corporativos y fórmulas `=SUM(...)`).
+- **Filtros Dinámicos Soportados:** Por sucursal (`branch_id`), rango temporal (`from_date`, `to_date`), búsqueda de texto (`q`), formato (`csv`, `excel`, `pdf`) y selección granular de columnas (`columns`).
+- **Restricción de Acceso:** Aislamiento multitenant absoluto y restricción de sucursal para el rol `encargado`.
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU21-01** | **Vista previa JSON de reporte de ventas consolidadas** | Ventas presenciales y pedidos online registrados en el tenant. | Petición `GET /api/reports/sales` con token JWT de Administrador. | 1. Frontend consulta endpoint analítico.<br>2. Backend agrega ventas y calcula KPI summary. | Código `HTTP 200 OK`. Retorna `summary` (`total_sales`, `total_units`, `total_orders`, `average_ticket`) y array `rows`. | JSON estructurado con métricas de ventas presenciales y virtuales consolidadas. | **APROBADO** |
+| **CP-CU21-02** | **Exportación de reporte de ventas en formato CSV plano** | Existen transacciones comerciales registradas. | Petición `GET /api/reports/sales/export?format=csv` con token de Administrador. | 1. Cliente solicita descarga CSV.<br>2. Backend serializa registros con cabeceras estándar. | Código `HTTP 200 OK`. `Content-Type: text/csv`. Header `Content-Disposition: attachment; filename="sales-report.csv"`. | Archivo CSV plano con codificación UTF-8 y cabeceras legibles descargado correctamente. | **APROBADO** |
+| **CP-CU21-03** | **Exportación formal de reporte de ventas a Excel XLSX con membrete y fórmulas** | Múltiples ventas en varias sucursales del tenant. | Petición `GET /api/reports/sales/export?format=excel` o `/api/reports/export/excel?report_type=sales`. | 1. Administrador pulsa botón [ Excel (.xlsx) ].<br>2. Backend invoca `openpyxl`.<br>3. Genera membrete corporativo, tabla formateada, formato moneda y fila totalizadora con fórmula `=SUM(...)`. | Código `HTTP 200 OK`. `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. Libro Excel válido (`PK\x03\x04`). | Hoja de cálculo Excel profesional generada con formato contable, anchos autoajustados y totales automáticos. | **APROBADO** |
+| **CP-CU21-04** | **Exportación de reporte de ventas a PDF apaisado con membrete y numeración de páginas** | Ventas registradas. Empresa con razón social registrada. | Petición `GET /api/reports/sales/export?format=pdf` o `/api/reports/export/pdf?report_type=sales`. | 1. Usuario pulsa botón [ PDF Oficial ].<br>2. Backend invoca ReportLab con `NumberedCanvas`.<br>3. Aplica orientación horizontal `landscape(letter)`, membrete formal, tarjetas KPI y pie de página "Página X de Y". | Código `HTTP 200 OK`. `Content-Type: application/pdf`. Encabezado binario `%PDF-1.4`. | Documento PDF editorial de alta fidelidad generado con paginación dinámica "Página 1 de 1" y membrete empresarial. | **APROBADO** |
+| **CP-CU21-05** | **Filtrado dinámico de columnas seleccionadas por el usuario** | Usuario desmarca columnas accesorias y conserva solo `product_name,variant_sku,quantity_sold,gross_sales`. | Petición `GET /api/reports/sales/export?format=excel&columns=product_name,variant_sku,quantity_sold,gross_sales`. | 1. Usuario abre panel "▼ Columnas visibles".<br>2. Desmarca columnas no deseadas.<br>3. Exporta a Excel o PDF.<br>4. Backend proyecta únicamente las claves solicitadas. | Código `HTTP 200 OK`. El archivo generado contiene exactamente las 4 columnas seleccionadas. | Proyección dinámica de columnas respetada sin quiebre de estilos ni desalineación de celdas. | **APROBADO** |
+| **CP-CU21-06** | **Exportación de reporte de inventario multisucursal y stock a PDF y Excel** | Stock cargado en sucursales Central y Norte. | Petición `GET /api/reports/inventory/export?format=pdf` y `format=excel`. | 1. Usuario navega a pestaña "Stock e Inventario".<br>2. Solicita exportación PDF y Excel.<br>3. Backend consolida stock físico, reservado y disponible. | Código `HTTP 200 OK` en ambos formatos. Muestra `branch_name`, `product_name`, `variant_sku`, `quantity`, `reserved_quantity`, `available_quantity`. | Reportes de inventario emitidos con trazabilidad de stock disponible y reservado. | **APROBADO** |
+| **CP-CU21-07** | **Exportación de trazabilidad de movimientos de almacén a PDF y Excel** | Movimientos de ingreso, salida y traslados registrados. | Petición `GET /api/reports/movements/export?format=pdf` y `format=excel`. | 1. Usuario selecciona pestaña "Trazabilidad de Movimientos".<br>2. Descarga PDF y Excel.<br>3. Backend audita entradas, salidas y traslados con tipo clasificado. | Código `HTTP 200 OK`. Registros con `movement_type`, cantidades y número de transacciones asentadas. | Archivos PDF y Excel con desglose cronológico de movimientos de almacén generados satisfactoriamente. | **APROBADO** |
+| **CP-CU21-08** | **Restricción y aislamiento por sucursal para rol Encargado** | Encargado asignado a Sucursal Central (A1). El tenant posee también Sucursal Norte (A2). | Petición `GET /api/reports/sales/export?format=pdf` con token JWT de rol `encargado`. | 1. Encargado exporta reporte desde su portal.<br>2. Backend fuerza `branch_id = current_user.branch_id`. | Código `HTTP 200 OK`. El reporte generado incluye exclusivamente las ventas de Sucursal Central; datos de Sucursal Norte quedan excluidos. | Restricción de sucursal inviolable: el encargado no accede a datos de otras sucursales. | **APROBADO** |
+| **CP-CU21-09** | **Tolerancia a rango de fechas vacío o sin transacciones registradas** | Rango temporal futuro (año 2030) sin datos asociados. | Petición `GET /api/reports/sales/export?format=pdf&from_date=2030-01-01&to_date=2030-01-02`. | 1. Usuario filtra por fechas sin ventas.<br>2. Backend procesa conjunto vacío sin excepciones 500.<br>3. Emite PDF y Excel con aviso "Sin registros en el periodo". | Código `HTTP 200 OK`. Archivo PDF/Excel válido con mensaje formal sin quiebres de servidor. | Manejo robusto de colecciones vacías verificado; cero errores 500 en generación de documentos. | **APROBADO** |
+
+---
+
 ## 4. 📊 Resumen Estadístico Consolidado de Cobertura
 
 ```
 ========================================================================================
-RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA Y 2DA PRESENTACIÓN)
+RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA, 2DA Y 3RA PRESENTACIÓN)
 ========================================================================================
-Total Casos de Prueba Formalizados:     73
-Casos de Prueba Aprobados (PASSED):     73 (100%)
+Total Casos de Prueba Formalizados:     82
+Casos de Prueba Aprobados (PASSED):     82 (100%)
 Casos de Prueba Fallidos (FAILED):       0 (0%)
 Casos de Prueba Bloqueados:              0 (0%)
 ----------------------------------------------------------------------------------------
@@ -297,9 +319,12 @@ Distribución por Caso de Uso:
   - CU16 (Resolver Conflictos y Quiebres de Stock):     7 Casos de Prueba  [100% OK]
   - CU17 (Cambio de Prenda con Cobro Diferencia Δ):     8 Casos de Prueba  [100% OK]
   - CU18 (Devolución con Retención 20-50% y NC):        8 Casos de Prueba  [100% OK]
+  [3ra Presentación - Carril B: Reportes]
+  - CU21 (Exportar Reportes a PDF y Excel):             9 Casos de Prueba  [100% OK]
 ----------------------------------------------------------------------------------------
 Aislamiento Multitenant:                               Verificado al 100% (HTTP 404/403)
 Políticas de Negocio Inviolables (P1, P2, P3, P4, P5): Cumplimiento Estricto Verificado
+Exportación Multi-Formato (ReportLab + OpenPyXL):       Verificado al 100% (PDF/XLSX/CSV)
 ========================================================================================
 ```
 

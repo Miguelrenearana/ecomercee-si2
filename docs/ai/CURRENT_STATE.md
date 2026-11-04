@@ -9,9 +9,9 @@
 
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
-| **Implementados y Verificados (100%)** | **18 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18` |
-| **En Curso / Inmediatos (Presentación 2)** | **0 CUs** | ¡2da Presentación Completada al 100%! |
-| **Programados (Presentación 3)** | **7 CUs** | `CU19`, `CU20`, `CU21`, `CU22`, `CU23`, `CU24`, `CU25` |
+| **Implementados y Verificados (100%)** | **20 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18`, `CU19`, `CU21` |
+| **En Curso / Inmediatos (Presentación 3)** | **1 CU** | `CU20` (Gemini RAG por Voz y Texto) / `CU22` (Dataset Sintético ML) |
+| **Programados (Presentación 3)** | **5 CUs** | `CU20`, `CU22`, `CU23`, `CU24`, `CU25` |
 
 ---
 
@@ -53,6 +53,10 @@
     Implementación rigurosa de la **Política de Negocio 1 (P-Ten-01)** en `p5_gestion_ventas_pos`. Endpoints `POST /api/exchanges/quote`, `POST /api/exchanges` y `GET /api/exchanges`. Cálculo dinámico de diferencia de precio ($\Delta = P_{\text{nueva}} - P_{\text{original}}$). Si $\Delta > 0$, el cambio se consolida **única y exclusivamente si el cliente abona la diferencia** en caja (`difference_paid = True`); de lo contrario, se rechaza con HTTP 400 y el inventario no se altera. Validación de etiqueta intacta (`good_with_tags`), plazo de cambio (máx. 30 días), actualización física atómica de inventario (+1 vieja, -1 nueva con `with_for_update`) y persistencia en tabla `garment_exchanges`. Suite `test_cu17_garment_exchange.py` con 8/8 pruebas aprobadas (100%).
 18. **`CU18: Procesar Devolución de Prenda con Retención Operativa (20%–50%) y Nota de Crédito` [Nuevo 2P - 100%]:**  
     Cumplimiento riguroso de la **Política de Negocio 2 (P-Ten-03)** en `p5_gestion_ventas_pos`. Endpoints `POST /api/returns/quote`, `POST /api/returns` y `GET /api/returns`. Retención operativa configurada por tenant entre el 20% y el 50% (30% en Elegance, 20% en Urbana) y reembolso neto entre el 50% y 80%. Modalidades de liquidación: emisión de Nota de Crédito digital (`NC-YYYYMMDD-XXXX`) o reembolso en efectivo. Validación de prenda intacta con etiqueta adherida (`good_with_tags`) y plazo permitido. Reingreso físico de inventario atómico con bloqueo pesimista `with_for_update`. Frontend Web PWA Angular en `/app/cajero/caja` con cotización previa interactiva y modal de Nota de Crédito. Suite `test_cu18_garment_return.py` con 8/8 pruebas aprobadas (100%) y regresión total de 26/26 pruebas.
+19. **`CU19: Localizar Sucursales y Trazar Rutas (OpenStreetMap / ORS)` [Nuevo 2P - 100%]:**  
+    Geolocalización interactiva de boutiques y trazado de rutas multimodales en aplicación móvil Flutter. Backend `p1_gestion_usuarios_acceso` con endpoint público `GET /api/branches/public` filtrado estrictamente por `tenant_id`, y base de datos poblada en `seed_saas.py` con georreferenciación de sucursales en Santa Cruz y Cochabamba. En Mobile Flutter, integración de `flutter_map: ^7.0.2` y `latlong2: ^0.9.1`, servicio híbrido de ruteo en `routing_service.dart` (Nivel 1 OSRM público sin API Key obligatoria, Nivel 2 OpenRouteService oficial y Nivel 3 fallback geodésico Haversine), controlador `BranchesMapController` con GPS del dispositivo y selector multimodal (`driving` y `walking`), y pantalla completa `BranchesMapPage` diseñada bajo directrices `/frontend-design` con paleta midnight/champagne gold, pines estilizados con halo radiante y tarjeta flotante con distancia y tiempo estimado de llegada. Suite `test_cu19_branch_public_map.py` 2/2 PASSED y unit tests móviles de ruteo en `routing_service_test.dart`.
+20. **`CU21: Exportar Reportes Empresariales a Formatos PDF y Excel` [Modificado 1P - 100%]:**  
+    Emisión y exportación multi-formato de reportes de Ventas, Stock e Inventario y Movimientos de Almacén en `p6_inteligencia_analitica`. Integración de ReportLab 5.1.0 para documentos PDF oficiales apaisados con numeración dinámica "Página X de Y", membrete y tarjetas KPI; OpenPyXL 3.1.5 para hojas de cálculo Excel XLSX con formatos contables y fórmulas `=SUM(...)`; y CSV plano. Proyección granular y dinámica de columnas solicitadas por el usuario (`columns`). Aislamiento multitenant estricto y restricción por sucursal para rol `encargado`. En Frontend Web PWA Angular en `/app/admin/reports` y `/app/encargado/reports` con tabuladores fluidos, selector interactivo de columnas visibles y descarga vía blob. Suite `test_cu21_export_reports.py` con 9/9 pruebas PASSED (100%) y 9 casos formalizados en `PRUEBAS_CAJA_NEGRA.md`.
 
 ---
 
@@ -81,11 +85,11 @@
 
 ### Aplicación Móvil (Flutter / Dart)
 * Persistencia local con SQLite embebido (`sqflite`).
-* Geolocalización lista para OpenStreetMap (`flutter_map` + OpenRouteService).
+* Geolocalización completa con OpenStreetMap (`flutter_map` + `latlong2`), motor híbrido OSRM/ORS con fallback Haversine y trazado de rutas vehiculares y peatonales (`CU19`).
 * Pasarela Stripe integrada mediante `flutter_stripe`.
 
 ---
 
-## 3. Próxima Tarea Inmediata (Presentación 2)
-* **`CU11` – Registrar Reserva de Prendas Offline en Modo Desconectado (PWA / SQLite).**
-* **`CU13` / `CU14` / `CU15` – Bloque de Ventas Offline en POS (Efectivo, UUIDv4, Outbox y Batch Sync Idempotente).**
+## 3. Próxima Tarea Inmediata (Presentación 3)
+* **`CU20` – Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG con audio/voz).**
+* **`CU22` – Generar Dataset Sintético de Ventas y Estacionalidad Textil (NumPy / Pandas).**

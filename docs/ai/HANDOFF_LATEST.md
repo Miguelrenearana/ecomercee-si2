@@ -1,6 +1,33 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 03/11/2026 (Cierre y Homologación Integral de CU11 al CU18)
+## Estado de Relevo Operativo al 03/11/2026 (Cierre de CU21: Exportación de Reportes a PDF y Excel)
+
+---
+
+### 1. Avances Consolidados en esta Sesión
+
+-1. **Implementación Fullstack de CU21 (Carril B: Reportes Empresariales a PDF y Excel):**
+    - **Backend (`p6_inteligencia_analitica`):**
+      - Librerías instaladas: `openpyxl==3.1.5` y `reportlab==5.1.0`.
+      - `export_report_to_excel(...)`: Libro Excel `.xlsx` corporativo con formatos contables, anchos autoajustados y fórmulas automáticas `=SUM(...)`.
+      - `export_report_to_pdf(...)`: Documento PDF apaisado `landscape(letter)` con `NumberedCanvas` (numeración dinámica "Página X de Y"), membrete formal con razón social y tarjetas KPI.
+      - Proyección dinámica de columnas (`columns`): omite celdas desmarcadas sin quebrar alineación de tablas.
+      - Aislamiento multitenant riguroso y restricción por sucursal para el rol `encargado`.
+      - Endpoints: `GET /api/reports/{report_type}/export` (formato `csv`, `excel`, `pdf`), `GET /api/reports/export/excel` y `GET /api/reports/export/pdf`.
+      - Suite automatizada [`backend/tests/test_cu21_export_reports.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu21_export_reports.py) con **9/9 pruebas PASSED (100%)**.
+    - **Frontend Web PWA (Angular 21):**
+      - Modelos y constantes en `report.model.ts`: definición de columnas predeterminadas para Ventas, Inventario y Movimientos.
+      - Servicio `reports-api.service.ts` con helper `downloadBlob` para descarga directa en el navegador.
+      - Componente [`admin-reports-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/admin/pages/admin-reports-page.component.ts) y `.html` con directrices `/frontend-design`:
+        - Botones de acción rápida: `[ CSV ]`, `[ 📊 Excel (.xlsx) ]` y `[ 📄 PDF Oficial ]`.
+        - Pestañas fluidas: Ventas y Facturación, Stock e Inventario, y Trazabilidad de Movimientos.
+        - Filtros por periodo (Hoy, Últimos 7 días, Este Mes, Histórico) y sucursal.
+        - Panel colapsable interactivo "▼ Columnas visibles" con checkboxes para personalizar tablas y exportaciones.
+        - Tarjetas KPI dinámicas y tabla con estilos cebra.
+      - Rutas `/app/admin/reports` y `/app/encargado/reports` registradas en `app.routes.ts` y menú lateral de `app-shell.component.ts`.
+    - **Aseguramiento de Calidad:**
+      - 9 casos de prueba registrados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU21-01` a `CP-CU21-09`).
+      - Total acumulado del proyecto: **82/82 casos de prueba PASSED (100%)**.
 
 ---
 

@@ -58,12 +58,12 @@
 ## 🎯 Presentación 3: Domingo 08/11/2026 (Alcance Acumulado: 25 Casos de Uso TOTALES)
 **Objetivo Técnico:** Geolocalización Móvil (OpenStreetMap), IA Generativa con Voz (Gemini RAG), Pipeline de Machine Learning (Supervisado/No Supervisado) y Dashboard Analítico.
 
-- [ ] **`CU19` – Localizar Sucursales y Trazar Rutas (OpenStreetMap / ORS)** [Nuevo 2P]
-  - *Criterio de éxito:* Mapa interactivo en Flutter con `flutter_map` y cálculo de rutas a pie/vehículo con OpenRouteService.
+- [x] **`CU19` – Localizar Sucursales y Trazar Rutas (OpenStreetMap / ORS)** [Nuevo 2P]
+  - *Estado:* 100% Implementado (Backend `p1_gestion_usuarios_acceso` con endpoint público `GET /api/branches/public` filtrado por tenant, base de datos poblada en `seed_saas.py` con georreferenciación en Santa Cruz y Cochabamba, suite `test_cu19_branch_public_map.py` 2/2 PASSED; Mobile Flutter con `flutter_map` y `latlong2`, motor híbrido de ruteo en `routing_service.dart` con OSRM público / ORS oficial / fallback Haversine, controlador `branches_map_controller.dart` y pantalla `branches_map_page.dart` con estética `/frontend-design`, selector de viaje auto/pie y tarjeta interactiva de boutique).
 - [ ] **`CU20` – Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG)** [Nuevo 2P]
   - *Criterio de éxito:* Consulta gerencial mediante micrófono, contextualización RAG multitenant con Gemini y respuesta hablada (TTS) + gráficos.
-- [ ] **`CU21` – Exportar Reportes Empresariales a Formatos PDF y Excel** [Modificado 1P]
-  - *Criterio de éxito:* Descarga dinámica de balances contables, inventario y ventas en archivos PDF con membrete y planillas Excel (.xlsx).
+- [x] **`CU21` – Exportar Reportes Empresariales a Formatos PDF y Excel** [Modificado 1P]
+  - *Estado:* 100% Implementado (Backend `p6_inteligencia_analitica` con ReportLab 5.1.0 para PDFs apaisados oficiales con `NumberedCanvas` 'Página X de Y', membrete corporativo dinámico y tarjetas KPI; OpenPyXL 3.1.5 para libros Excel `.xlsx` con estilos contables, anchos autoajustados y fórmulas `=SUM(...)`; soporte de CSV plano; filtro dinámico y proyección de columnas `columns`; aislamiento multitenant y restricción por sucursal para rol `encargado`. En Frontend Web PWA Angular en `/app/admin/reports` y `/app/encargado/reports` con tabuladores para Ventas, Inventario y Movimientos, filtros de rango de fecha, búsqueda en tiempo real, panel colapsable interactivo de configuración de columnas visibles y descarga directa vía blob. Suite `test_cu21_export_reports.py` con 9/9 pruebas PASSED y 9 casos formalizados en `PRUEBAS_CAJA_NEGRA.md`).
 - [ ] **`CU22` – Generar Dataset Sintético de Ventas y Estacionalidad** [Nuevo 2P]
   - *Criterio de éxito:* Generador estocástico Python (`numpy`/`pandas`) de 10,000+ transacciones simuladas con estacionalidad de moda textil.
 - [ ] **`CU23` – Predecir Demanda de Ropa (ML Supervisado)** [Nuevo 2P]
