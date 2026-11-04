@@ -371,6 +371,11 @@ class Branch {
     required this.id,
     required this.name,
     required this.city,
+    this.address,
+    this.phone,
+    this.openingHours,
+    this.latitude,
+    this.longitude,
     required this.isDefault,
     required this.isActive,
   });
@@ -378,14 +383,30 @@ class Branch {
   final String id;
   final String name;
   final String city;
+  final String? address;
+  final String? phone;
+  final String? openingHours;
+  final double? latitude;
+  final double? longitude;
   final bool isDefault;
   final bool isActive;
+
+  bool get hasCoordinates =>
+      latitude != null &&
+      longitude != null &&
+      latitude != 0.0 &&
+      longitude != 0.0;
 
   factory Branch.fromJson(Map<String, dynamic> json) {
     return Branch(
       id: _requiredString(json, 'id'),
       name: _requiredString(json, 'name'),
       city: _requiredString(json, 'city'),
+      address: json['address']?.toString(),
+      phone: json['phone']?.toString(),
+      openingHours: json['opening_hours']?.toString(),
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       isDefault: _requiredBool(json, 'is_default'),
       isActive: _requiredBool(json, 'is_active'),
     );
