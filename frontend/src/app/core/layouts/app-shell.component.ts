@@ -206,6 +206,7 @@ export class AppShellComponent {
             title: 'Reportes y Control',
             items: [
               { label: 'Dashboard', route: '/app/admin', icon: 'lucideLayoutDashboard', exact: true },
+              { label: 'Reportes', route: '/app/admin/reports', icon: 'lucideClipboardList', exact: true },
             ],
           },
           {
@@ -303,6 +304,12 @@ export class AppShellComponent {
             items: [
               { label: 'Proveedores', route: '/app/encargado/providers', icon: 'lucideUsers' },
               { label: 'Solicitudes', route: '/app/encargado/replenishment', icon: 'lucideClipboardList' },
+            ],
+          },
+          {
+            title: 'Reportes y Estadísticas',
+            items: [
+              { label: 'Reportes', route: '/app/encargado/reports', icon: 'lucideClipboardList', exact: true },
             ],
           },
         ];

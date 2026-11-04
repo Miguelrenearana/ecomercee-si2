@@ -148,6 +148,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/proveedor/pages/provider-products-page.component').then((m) => m.ProviderProductsPageComponent),
       },
       {
+        path: 'encargado/reports',
+        canActivate: [roleGuard(['encargado', 'administrador'])],
+        loadComponent: () =>
+          import('./features/admin/pages/admin-reports-page.component').then(
+            (m) => m.AdminReportsPageComponent,
+          ),
+      },
+      {
         path: 'encargado/sale-conflicts',
         canActivate: [roleGuard(['encargado', 'administrador'])],
         loadComponent: () =>
@@ -252,6 +260,13 @@ export const routes: Routes = [
           {
             path: 'replenishment',
             loadComponent: () => import('./features/shared/pages/replenishment-page.component').then((m) => m.ReplenishmentPageComponent),
+          },
+          {
+            path: 'reports',
+            loadComponent: () =>
+              import('./features/admin/pages/admin-reports-page.component').then(
+                (m) => m.AdminReportsPageComponent,
+              ),
           },
           {
             path: 'orders',
