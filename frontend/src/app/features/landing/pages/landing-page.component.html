@@ -509,90 +509,76 @@
           </p>
         </div>
 
-        <div class="mt-14 mx-auto max-w-lg">
-          <div class="rounded-3xl border-2 border-[#f8baa3] bg-white shadow-xl overflow-hidden relative transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
-            
-            <div class="h-3 w-full bg-[#f8baa3]"></div>
+        <!-- Cuadrícula Responsiva de 3 Planes SaaS -->
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+          @for (plan of plans; track plan.name) {
+            <div 
+              class="rounded-3xl bg-white transition-all duration-300 flex flex-col justify-between relative overflow-hidden card-hover"
+              [ngClass]="plan.isPopular 
+                ? 'border-2 border-[#f8baa3] shadow-xl lg:-translate-y-2 ring-4 ring-[#f8baa3]/20' 
+                : 'border border-slate-200 shadow-md hover:border-[#f8baa3]'"
+            >
+              @if (plan.isPopular) {
+                <div class="bg-gradient-to-r from-[#f8baa3] to-[#f5a489] text-slate-950 font-bold text-xs uppercase tracking-widest text-center py-2 px-4 shadow-sm">
+                  {{ plan.badge }}
+                </div>
+              } @else {
+                <div class="h-2 w-full bg-slate-100"></div>
+              }
 
-            <div class="p-8 sm:p-10 space-y-6">
-              
-              <div class="text-center space-y-2">
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-[#fff2ec] px-3.5 py-1 text-xs font-semibold text-[#cf7255]">
-                  ✦ Plan Esencial
-                </span>
-                
-                <div class="pt-4 flex items-baseline justify-center gap-1 font-title">
-                  <span class="text-5xl sm:text-6xl font-bold text-slate-900">$0</span>
-                  <span class="text-slate-500 text-sm font-semibold">USD/mes</span>
+              <div class="p-6 sm:p-8 flex-1 flex flex-col justify-between space-y-6">
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between gap-2">
+                    <h3 class="font-title text-2xl font-bold text-slate-900">{{ plan.name }}</h3>
+                    @if (!plan.isPopular) {
+                      <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                        {{ plan.badge }}
+                      </span>
+                    }
+                  </div>
+
+                  <p class="text-xs text-slate-600 leading-relaxed min-h-[36px]">
+                    {{ plan.description }}
+                  </p>
+
+                  <div class="pt-2 flex items-baseline gap-1.5 font-title">
+                    <span class="text-4xl sm:text-5xl font-bold text-slate-900">{{ plan.price }}</span>
+                    <span class="text-slate-500 text-xs font-semibold">{{ plan.period }}</span>
+                  </div>
+
+                  <p class="text-xs font-semibold text-[#cf7255] bg-[#fff2ec] rounded-lg px-3 py-1.5 inline-block">
+                    {{ plan.highlightText }}
+                  </p>
+
+                  <ul class="space-y-3 pt-4 border-t border-slate-100 text-xs text-slate-700">
+                    @for (feature of plan.features; track feature) {
+                      <li class="flex items-start gap-2.5">
+                        <svg class="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="leading-tight">{{ feature }}</span>
+                      </li>
+                    }
+                  </ul>
                 </div>
 
-                <p class="text-sm font-medium text-slate-600">
-                  Primer mes <strong class="text-slate-900 font-bold">GRATIS</strong>, luego $29 USD/mes
-                </p>
+                <div class="pt-6 border-t border-slate-100">
+                  <a 
+                    [routerLink]="plan.ctaLink" 
+                    class="w-full inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 cursor-pointer"
+                    [ngClass]="plan.isPopular 
+                      ? 'btn-brand shadow-md hover:shadow-lg' 
+                      : 'bg-slate-900 text-white hover:bg-slate-800'"
+                  >
+                    <span>{{ plan.ctaText }}</span>
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </a>
+                </div>
               </div>
-
-              <ul class="space-y-4 pt-4 border-t border-slate-100 text-sm text-slate-700">
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Productos y variantes ilimitadas (talles y colores)</span>
-                </li>
-
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Sistema POS completo para ventas en mostrador</span>
-                </li>
-
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Probador Virtual con Inteligencia Artificial incluido</span>
-                </li>
-
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Gestión de clientes, historial de compras y tallas</span>
-                </li>
-
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Control de caja, turnos y movimientos de stock</span>
-                </li>
-
-                <li class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Reportes y estadísticas avanzadas de rentabilidad</span>
-                </li>
-              </ul>
-
-              <div class="pt-4">
-                <a 
-                  routerLink="/auth/register" 
-                  class="btn-brand w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-semibold shadow-md cursor-pointer"
-                >
-                  <span>Comenzar prueba gratis</span>
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </a>
-                <p class="text-center text-xs text-slate-600 mt-3">
-                  Cancela en cualquier momento con un clic. Sin penalizaciones.
-                </p>
-              </div>
-
             </div>
-
-          </div>
+          }
         </div>
 
       </div>

@@ -176,3 +176,46 @@ header {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+
+/* ============================================================
+   TRANSICIONES GLOBALES FLUIDAS DE PÁGINA Y COMPONENTES
+   (design-taste-frontend + accesibilidad con prefers-reduced-motion)
+   ============================================================ */
+
+/* Animación sutil de entrada para cada vista enrutada */
+router-outlet + * {
+  display: block;
+  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soporte para usuarios con preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  router-outlet + * {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Transición suave y consistente para elementos interactivos */
+a, button, input, select, textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 200ms;
+}

@@ -14,6 +14,19 @@ interface StepItem {
   description: string;
 }
 
+interface PlanItem {
+  name: string;
+  badge: string;
+  price: string;
+  period: string;
+  highlightText: string;
+  description: string;
+  features: string[];
+  isPopular?: boolean;
+  ctaText: string;
+  ctaLink: string;
+}
+
 interface FeatureItem {
   title: string;
   description: string;
@@ -30,6 +43,70 @@ interface FeatureItem {
 })
 export class LandingPageComponent {
   // Configuración de imágenes del sitio
+  // Planes de suscripción SaaS oficiales
+  readonly plans: PlanItem[] = [
+    {
+      name: 'Plan Básico',
+      badge: 'Boutique Inicial',
+      price: '',
+      period: 'USD/mes',
+      highlightText: 'Primer mes GRATIS (Prueba de 30 días)',
+      description: 'Ideal para boutiques independientes y tiendas que inician su digitalización.',
+      features: [
+        'Hasta 2 sucursales activas',
+        'Productos y variantes ilimitadas (talles y colores)',
+        'Punto de Venta POS de mostrador (con modo offline)',
+        'Catálogo digital interactivo y reservas',
+        'Gestión de clientes y tallas habituales',
+        'Control de stock, turnos y arqueos de caja',
+        'Reportes esenciales de rotación y ventas',
+      ],
+      isPopular: false,
+      ctaText: 'Comenzar prueba gratis',
+      ctaLink: '/auth/register',
+    },
+    {
+      name: 'Plan Profesional',
+      badge: '★ Más Elegido',
+      price: '',
+      period: 'USD/mes',
+      highlightText: 'Incluye Módulo IA Generativa',
+      description: 'Para marcas y cadenas de moda en expansión que buscan maximizar ventas.',
+      features: [
+        'Hasta 10 sucursales y depósitos',
+        'Todo lo incluido en el Plan Básico',
+        'Probador Virtual con Inteligencia Artificial (IA)',
+        'Recomendaciones colaborativas personalizadas',
+        'Gestión de despachos con Stripe y pasarelas',
+        'Políticas avanzadas de cambios y devoluciones',
+        'Métricas predictivas de rentabilidad y demanda',
+      ],
+      isPopular: true,
+      ctaText: 'Iniciar con Pro',
+      ctaLink: '/auth/register',
+    },
+    {
+      name: 'Plan Empresarial',
+      badge: 'Multitienda & Franquicia',
+      price: '',
+      period: 'USD/mes',
+      highlightText: 'Soporte y SLA Prioritario 24/7',
+      description: 'Solución corporativa para grandes retailers textiles y franquicias.',
+      features: [
+        'Hasta 25 sucursales centralizadas',
+        'Acceso completo a todos los modelos de IA',
+        'Sincronización multi-sucursal en tiempo real',
+        'Asistente de reposición inteligente entre locales',
+        'API dedicada para integraciones contables/ERP',
+        'Copias de respaldo continuas y auditoría SaaS',
+        'Onboarding personalizado y soporte VIP',
+      ],
+      isPopular: false,
+      ctaText: 'Contactar a Ventas',
+      ctaLink: '/auth/register',
+    },
+  ];
+
   readonly images = {
     logoIcon: '/assets/logo-fashionstore.png',
     logoName: '/assets/logo-name.png',

@@ -1,41 +1,145 @@
-<section class="space-y-3">
-  <header class="flex items-center justify-between gap-3">
-    <div><h1 class="text-2xl font-semibold">Dashboard</h1><p class="text-sm text-slate-500">Ventas, inventario y reservas en tiempo real.</p></div>
-    <button hlmBtn type="button" variant="outline" (click)="refresh()" [disabled]="loading()">Actualizar</button>
+<section class="space-y-4">
+  <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+      <p class="text-sm text-slate-500">Ventas, inventario y reservas en tiempo real.</p>
+    </div>
+    <button hlmBtn type="button" variant="outline" class="w-full sm:w-auto" (click)="refresh()" [disabled]="loading()">
+      Actualizar
+    </button>
   </header>
 
-  <section hlmCard class="bg-white shadow-sm"><div hlmCardContent class="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
-    <div hlmSelect class="lg:col-span-2" [value]="selectedBranchId()" [itemToString]="branchSelectLabel" (valueChange)="onBranchChange($event)">
-      <hlm-select-trigger class="h-9" buttonId="dashboard-branch"><span hlmSelectValue placeholder="Todas las sucursales"></span></hlm-select-trigger>
-      <hlm-select-content><hlm-select-item value="">Todas las sucursales</hlm-select-item>@for (branch of branches(); track branch.id) {<hlm-select-item [value]="branch.id">{{ branch.name }} - {{ branch.city }}</hlm-select-item>}</hlm-select-content>
-    </div>
-    <div hlmSelect [value]="period()" [itemToString]="periodSelectLabel" (valueChange)="onPeriodChange($event)">
-      <hlm-select-trigger class="h-9" buttonId="dashboard-period"><span hlmSelectValue placeholder="Día"></span></hlm-select-trigger>
-      <hlm-select-content><hlm-select-item value="day">Día</hlm-select-item><hlm-select-item value="week">Semana</hlm-select-item><hlm-select-item value="month">Mes</hlm-select-item></hlm-select-content>
-    </div>
-    <input hlmInput type="date" [value]="fromDate()" (input)="onFromDateChange($event)" /><input hlmInput type="date" [value]="toDate()" (input)="onToDateChange($event)" />
-    <button hlmBtn type="button" class="sm:col-span-2 lg:col-span-1" (click)="applyFilters()" [disabled]="loading()">Aplicar</button>
-  </div></section>
-
-  <section class="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">@for (card of summaryCards(); track card.label) {<article hlmCard class="bg-white shadow-sm"><div hlmCardContent class="p-3"><p class="text-[11px] uppercase tracking-wide text-slate-500">{{ card.label }}</p><p class="mt-1 text-xl font-semibold" [ngClass]="card.tone">{{ card.value }}</p></div></article>}</section>
-
-  <section class="grid gap-3 xl:grid-cols-2">
-    <article hlmCard class="bg-white shadow-sm"><div hlmCardContent class="p-3"><div class="mb-1 flex items-center justify-between"><div><h2 class="font-semibold">Ventas por periodo</h2><p class="text-xs text-slate-500">Sucursal: {{ branchLabel() }}</p></div><span class="text-xs text-slate-500">{{ dashboard().sales_series.length }} puntos</span></div>
-      @if (salesChartData().length) {<div hlmOnBrowser><ngx-area-chart [data]="salesChartData()" [categories]="salesCategories" [height]="180" [hideLegend]="true" [yGridLine]="true" [xNumTicks]="5" /></div>} @else {<p class="py-12 text-sm text-slate-500">Sin datos para el periodo seleccionado.</p>}
-    </div></article>
-    <article hlmCard class="bg-white shadow-sm"><div hlmCardContent class="p-3"><div class="mb-2 flex items-center justify-between"><div><h2 class="font-semibold">Movimientos</h2><p class="text-xs text-slate-500">Cantidades por sucursal.</p></div></div>
-      <div class="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Tipo de movimiento">
-        @for (tab of movementTabs; track tab.key) {<button type="button" role="tab" [attr.aria-selected]="activeMovementTab() === tab.key" [class.bg-slate-900]="activeMovementTab() === tab.key" [class.text-white]="activeMovementTab() === tab.key" class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors" (click)="setActiveMovementTab(tab.key)">{{ tab.label }}</button>}
+  <section hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80">
+    <div hlmCardContent class="grid gap-3 p-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div hlmSelect class="sm:col-span-2 lg:col-span-1 xl:col-span-2" [value]="selectedBranchId()" [itemToString]="branchSelectLabel" (valueChange)="onBranchChange($event)">
+        <hlm-select-trigger class="h-9 w-full" buttonId="dashboard-branch">
+          <span hlmSelectValue placeholder="Todas las sucursales"></span>
+        </hlm-select-trigger>
+        <hlm-select-content>
+          <hlm-select-item value="">Todas las sucursales</hlm-select-item>
+          @for (branch of branches(); track branch.id) {
+            <hlm-select-item [value]="branch.id">{{ branch.name }} - {{ branch.city }}</hlm-select-item>
+          }
+        </hlm-select-content>
       </div>
-      @if (movementDonutData().length) {<div hlmOnBrowser><ngx-donut-chart [data]="movementDonutData()" [categories]="movementDonutCategories()" [height]="180" [arcWidth]="28" /></div>} @else {<p class="py-12 text-sm text-slate-500">Sin movimientos para el periodo seleccionado.</p>}
-    </div></article>
+
+      <div hlmSelect class="w-full" [value]="period()" [itemToString]="periodSelectLabel" (valueChange)="onPeriodChange($event)">
+        <hlm-select-trigger class="h-9 w-full" buttonId="dashboard-period">
+          <span hlmSelectValue placeholder="Día"></span>
+        </hlm-select-trigger>
+        <hlm-select-content>
+          <hlm-select-item value="day">Día</hlm-select-item>
+          <hlm-select-item value="week">Semana</hlm-select-item>
+          <hlm-select-item value="month">Mes</hlm-select-item>
+        </hlm-select-content>
+      </div>
+
+      <input hlmInput type="date" class="w-full" [value]="fromDate()" (input)="onFromDateChange($event)" />
+      <input hlmInput type="date" class="w-full" [value]="toDate()" (input)="onToDateChange($event)" />
+
+      <button hlmBtn type="button" class="w-full sm:col-span-2 lg:col-span-3 xl:col-span-5" (click)="applyFilters()" [disabled]="loading()">
+        Aplicar Filtros
+      </button>
+    </div>
   </section>
 
-  <section class="grid gap-3 xl:grid-cols-2"><article hlmCard class="bg-white shadow-sm"><div hlmCardContent class="p-3"><h2 class="mb-2 font-semibold">Rendimiento por sucursal</h2>
-    @if (branchPerformanceChartData().length) {<div hlmOnBrowser><ngx-bar-chart [data]="branchPerformanceChartData()" [categories]="{ sales: { name: 'Ventas', color: '#10b981' } }" [yAxis]="['sales']" [height]="180" [hideLegend]="true" [yGridLine]="true" /></div>} @else {<p class="py-12 text-sm text-slate-500">Sin rendimiento por sucursal.</p>}
-  </div></article>
-    <article hlmCard class="bg-white shadow-sm"><div hlmCardContent class="p-3"><h2 class="mb-2 font-semibold">Top productos</h2>
-      @if (topProductsChartData().length) {<div hlmOnBrowser><ngx-bar-chart [data]="topProductsChartData()" [categories]="{ sales: { name: 'Ventas', color: '#8b5cf6' } }" [yAxis]="['sales']" [height]="180" [hideLegend]="true" [yGridLine]="true" /></div>} @else {<p class="py-12 text-sm text-slate-500">Sin ventas por producto.</p>}
-    </div></article>
+  <!-- KPI Cards con Grid Responsivo y Sin Desbordes -->
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-8">
+    @for (card of summaryCards(); track card.label) {
+      <article hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80 transition-all hover:shadow-sm">
+        <div hlmCardContent class="p-3.5">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate" [title]="card.label">
+            {{ card.label }}
+          </p>
+          <p class="mt-1 text-lg sm:text-xl font-bold tracking-tight truncate" [ngClass]="card.tone" [title]="card.value">
+            {{ card.value }}
+          </p>
+        </div>
+      </article>
+    }
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80">
+      <div hlmCardContent class="p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-slate-900">Ventas por periodo</h2>
+            <p class="text-xs text-slate-500">Sucursal: {{ branchLabel() }}</p>
+          </div>
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-medium">
+            {{ dashboard().sales_series.length }} puntos
+          </span>
+        </div>
+        @if (salesChartData().length) {
+          <div hlmOnBrowser>
+            <ngx-area-chart [data]="salesChartData()" [categories]="salesCategories" [height]="180" [hideLegend]="true" [yGridLine]="true" [xNumTicks]="5" />
+          </div>
+        } @else {
+          <p class="py-12 text-center text-sm text-slate-500">Sin datos para el periodo seleccionado.</p>
+        }
+      </div>
+    </article>
+
+    <article hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80">
+      <div hlmCardContent class="p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-slate-900">Movimientos</h2>
+            <p class="text-xs text-slate-500">Cantidades por sucursal.</p>
+          </div>
+        </div>
+        <div class="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Tipo de movimiento">
+          @for (tab of movementTabs; track tab.key) {
+            <button
+              type="button"
+              role="tab"
+              [attr.aria-selected]="activeMovementTab() === tab.key"
+              [class.bg-slate-900]="activeMovementTab() === tab.key"
+              [class.text-white]="activeMovementTab() === tab.key"
+              class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+              (click)="setActiveMovementTab(tab.key)"
+            >
+              {{ tab.label }}
+            </button>
+          }
+        </div>
+        @if (movementDonutData().length) {
+          <div hlmOnBrowser>
+            <ngx-donut-chart [data]="movementDonutData()" [categories]="movementDonutCategories()" [height]="180" [arcWidth]="28" />
+          </div>
+        } @else {
+          <p class="py-12 text-center text-sm text-slate-500">Sin movimientos para el periodo seleccionado.</p>
+        }
+      </div>
+    </article>
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80">
+      <div hlmCardContent class="p-4">
+        <h2 class="mb-3 font-semibold text-slate-900">Rendimiento por sucursal</h2>
+        @if (branchPerformanceChartData().length) {
+          <div hlmOnBrowser>
+            <ngx-bar-chart [data]="branchPerformanceChartData()" [categories]="{ sales: { name: 'Ventas', color: '#10b981' } }" [yAxis]="['sales']" [height]="180" [hideLegend]="true" [yGridLine]="true" />
+          </div>
+        } @else {
+          <p class="py-12 text-center text-sm text-slate-500">Sin rendimiento por sucursal.</p>
+        }
+      </div>
+    </article>
+
+    <article hlmCard class="bg-white shadow-xs rounded-xl border border-slate-200/80">
+      <div hlmCardContent class="p-4">
+        <h2 class="mb-3 font-semibold text-slate-900">Top productos</h2>
+        @if (topProductsChartData().length) {
+          <div hlmOnBrowser>
+            <ngx-bar-chart [data]="topProductsChartData()" [categories]="{ sales: { name: 'Ventas', color: '#8b5cf6' } }" [yAxis]="['sales']" [height]="180" [hideLegend]="true" [yGridLine]="true" />
+          </div>
+        } @else {
+          <p class="py-12 text-center text-sm text-slate-500">Sin ventas por producto.</p>
+        }
+      </div>
+    </article>
   </section>
 </section>
