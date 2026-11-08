@@ -53,6 +53,9 @@ export interface CatalogProduct {
   id: string;
   name: string;
   description: string | null;
+  category_name?: string | null;
+  has_discount?: boolean;
+  discounted_price?: string | null;
   discount_type?: DiscountType | null;
   discount_value?: string | null;
   has_discount?: boolean;

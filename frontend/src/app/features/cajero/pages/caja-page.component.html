@@ -722,8 +722,8 @@
                           </svg>
                           Sincronizado
                         </span>
-                      } @else if (sale.sync_error) {
-                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 border border-rose-200" [title]="sale.sync_error">
+                      } @else if (sale.sync_error || sale.error) {
+                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 border border-rose-200" [title]="sale.sync_error || sale.error || 'Error'">
                           <svg class="h-3 w-3 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                           </svg>
@@ -795,8 +795,41 @@
         class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl print:shadow-none print:w-full print:max-w-none print:p-0 text-slate-900"
         (click)="$event.stopPropagation()"
       >
+        <!-- Estilos Dedicados para Impresora Térmica POS 80mm (CU13) -->
+        <style>
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+            #thermal-receipt,
+            #thermal-receipt * {
+              visibility: visible !important;
+            }
+            #thermal-receipt {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 76mm !important;
+              max-width: 76mm !important;
+              margin: 0 !important;
+              padding: 4mm !important;
+              background: white !important;
+              color: black !important;
+              border: 1px dashed #000 !important;
+              box-shadow: none !important;
+              font-family: monospace !important;
+              font-size: 11px !important;
+              line-height: 1.3 !important;
+            }
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+          }
+        </style>
+
         <!-- Formato Ticket Térmico -->
-        <div class="border-2 border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-3 bg-slate-50/50 print:border-none print:bg-white">
+        <div id="thermal-receipt" class="border-2 border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-3 bg-slate-50/50 print:border-none print:bg-white">
           <div class="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-3">
             <p class="font-bold text-sm tracking-wider uppercase">FASHIONSTORE SAAS</p>
             <p class="text-[11px] text-slate-500">{{ branchName() }}</p>
