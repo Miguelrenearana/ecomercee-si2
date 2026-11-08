@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { ApiService } from '../../../core/services/api.service';
+import { ApiResponse } from '../../../core/models/api.model';
 import {
   InventoryReportResponse,
   MovementsReportResponse,
@@ -10,11 +11,25 @@ import {
   ReportQuery,
   SalesReportResponse,
   ReportType,
+  VoiceReportResponse,
+  VoiceCapabilitiesResponse,
 } from '../models/report.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReportsApiService {
   private readonly api = inject(ApiService);
+
+  queryVoiceReport(query: string, branchId?: string | null) {
+    return this.api.post<ApiResponse<VoiceReportResponse>>('/reports/voice-query', {
+      query,
+      branch_id: branchId || null,
+      include_audio_hints: true,
+    });
+  }
+
+  getVoiceCapabilities() {
+    return this.api.get<ApiResponse<VoiceCapabilitiesResponse>>('/reports/voice-query/capabilities');
+  }
 
   getSalesReport(filters: ReportQuery) {
     return this.api.get<SalesReportResponse>(`/reports/sales${this.query(filters)}`);

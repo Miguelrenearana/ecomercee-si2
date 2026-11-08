@@ -24,6 +24,7 @@ import {
 import { CatalogApiService } from '../../shared/services/catalog-api.service';
 import { ReportsApiService } from '../../shared/services/reports-api.service';
 import { SessionService } from '../../shared/services/session.service';
+import { VoiceAssistantModalComponent } from '../components/voice-assistant-modal.component';
 
 @Component({
   selector: 'app-admin-reports-page',
@@ -34,6 +35,7 @@ import { SessionService } from '../../shared/services/session.service';
     HlmButton,
     HlmCardImports,
     HlmBadgeImports,
+    VoiceAssistantModalComponent,
   ],
   templateUrl: './admin-reports-page.component.html',
 })
@@ -42,6 +44,7 @@ export class AdminReportsPageComponent implements OnInit {
   private readonly catalogApi = inject(CatalogApiService);
   private readonly session = inject(SessionService);
 
+  readonly showVoiceAssistant = signal<boolean>(false);
   readonly activeTab = signal<ReportType>('sales');
   readonly loading = signal<boolean>(false);
   readonly exporting = signal<boolean>(false);
@@ -134,9 +137,11 @@ export class AdminReportsPageComponent implements OnInit {
   }
 
   loadBranches(): void {
-    this.catalogApi.getBranches().subscribe({
-      next: (branches) => {
-        this.branches.set(branches);
+    this.catalogApi.listPublicBranches().subscribe({
+      next: (res) => {
+        if (res.data) {
+          this.branches.set(res.data);
+        }
       },
       error: () => {
         // silently fallback
@@ -230,8 +235,10 @@ export class AdminReportsPageComponent implements OnInit {
       this.reportsApi.getSalesReport(query).subscribe({
         next: (res) => {
           this.loading.set(false);
-          this.summary.set(res.data.summary);
-          this.salesRows.set(res.data.rows);
+          if (res.data) {
+            this.summary.set(res.data.summary);
+            this.salesRows.set(res.data.rows);
+          }
         },
         error: (err) => {
           this.loading.set(false);
@@ -242,8 +249,10 @@ export class AdminReportsPageComponent implements OnInit {
       this.reportsApi.getInventoryReport(query).subscribe({
         next: (res) => {
           this.loading.set(false);
-          this.summary.set(res.data.summary);
-          this.inventoryRows.set(res.data.rows);
+          if (res.data) {
+            this.summary.set(res.data.summary);
+            this.inventoryRows.set(res.data.rows);
+          }
         },
         error: (err) => {
           this.loading.set(false);
@@ -254,8 +263,10 @@ export class AdminReportsPageComponent implements OnInit {
       this.reportsApi.getMovementsReport(query).subscribe({
         next: (res) => {
           this.loading.set(false);
-          this.summary.set(res.data.summary);
-          this.movementsRows.set(res.data.rows);
+          if (res.data) {
+            this.summary.set(res.data.summary);
+            this.movementsRows.set(res.data.rows);
+          }
         },
         error: (err) => {
           this.loading.set(false);
@@ -307,5 +318,13 @@ export class AdminReportsPageComponent implements OnInit {
       transfer_out: 'Traslado Salida (-)',
     };
     return map[type] || type;
+  }
+
+  openVoiceAssistant(): void {
+    this.showVoiceAssistant.set(true);
+  }
+
+  closeVoiceAssistant(): void {
+    this.showVoiceAssistant.set(false);
   }
 }

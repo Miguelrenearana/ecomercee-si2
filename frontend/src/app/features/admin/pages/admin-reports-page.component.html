@@ -11,8 +11,18 @@
       </p>
     </div>
 
-    <!-- Botones de Exportación Directa -->
+    <!-- Botones de Acción y Exportación Directa -->
     <div class="flex flex-wrap items-center gap-2">
+      <!-- Botón CU20: Asistente por Voz y Lenguaje Natural con Gemini RAG -->
+      <button
+        hlmBtn
+        size="sm"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm transition flex items-center gap-1.5 border border-indigo-700"
+        (click)="openVoiceAssistant()">
+        <span class="text-sm">🎙️</span>
+        <span>Asistente por Voz (IA)</span>
+      </button>
+
       <button
         hlmBtn
         variant="outline"
@@ -424,4 +434,10 @@
       }
     }
   </section>
+
+  <!-- CU20: Modal de Asistente de Voz y Reportes Ejecutivos por Lenguaje Natural (Gemini RAG) -->
+  <app-voice-assistant-modal
+    [isOpen]="showVoiceAssistant()"
+    [branchId]="branchId() || null"
+    (close)="closeVoiceAssistant()" />
 </section>

@@ -120,3 +120,31 @@ export interface NaturalReportPayload {
 }
 
 export type NaturalReportResponse = ApiResponse<NaturalReportPayload>;
+
+export interface ExecutiveKPICard {
+  title: string;
+  value: string;
+  subtext?: string | null;
+  trend?: 'up' | 'down' | 'neutral' | null;
+  color?: string | null;
+}
+
+export interface VoiceReportResponse {
+  query: string;
+  executive_summary: string;
+  speech_text: string;
+  kpis: ExecutiveKPICard[];
+  data_preview: Array<Record<string, any>>;
+  model_used: string;
+  is_fallback: boolean;
+  generated_at: string;
+}
+
+export interface VoiceCapabilitiesResponse {
+  ai_available: boolean;
+  model: string;
+  language: string;
+  supported_topics: string[];
+  suggested_queries: string[];
+}
+

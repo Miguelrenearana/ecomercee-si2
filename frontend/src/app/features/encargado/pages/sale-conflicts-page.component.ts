@@ -5,7 +5,6 @@ import { firstValueFrom } from 'rxjs';
 import { toast } from '@spartan-ng/brain/sonner';
 
 import { HlmBadgeImports } from '../../../components/badge/src';
-import { HlmButton } from '../../../components/button/src';
 import { HlmCardImports } from '../../../components/card/src';
 import { HlmInputImports } from '../../../components/input/src';
 import { HlmTextareaImports } from '../../../components/textarea/src';
@@ -24,7 +23,6 @@ import { SalesApiService } from '../../shared/services/sales-api.service';
   imports: [
     CommonModule,
     FormsModule,
-    HlmButton,
     ...HlmBadgeImports,
     ...HlmCardImports,
     ...HlmInputImports,
