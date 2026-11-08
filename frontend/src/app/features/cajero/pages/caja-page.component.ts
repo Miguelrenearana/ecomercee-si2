@@ -55,6 +55,7 @@ export class CajaPageComponent {
   protected readonly submitting = signal(false);
   protected readonly cashReference = signal('');
   protected readonly cashReceived = signal<number | null>(null);
+  protected readonly Number = Number;
 
   // Simulación de modo desconectado para pruebas operativas
   protected readonly simulatedOffline = signal(false);
@@ -309,14 +310,40 @@ export class CajaPageComponent {
       variant_id: variant.id,
       product_name: product.name,
       variant_sku: variant.sku,
-      size_name: variant.size_name,
-      color_name: variant.color_name,
+      size_name: variant.size_name ?? null,
+      color_name: variant.color_name ?? null,
       unit_price: String(finalPrice),
       original_unit_price: String(variant.price),
       quantity: 1,
-      image_url: variant.image_url || product.image_url,
+      image_url: variant.image_url || product.image_url || null,
     });
     this.selectedItems.set(items);
+  }
+
+  protected removeItem(variantId: string): void {
+    this.selectedItems.update((items) => items.filter((item) => item.variant_id !== variantId));
+  }
+
+  protected decreaseItem(variantId: string): void {
+    const items = [...this.selectedItems()];
+    const index = items.findIndex((item) => item.variant_id === variantId);
+    if (index >= 0) {
+      if (items[index].quantity > 1) {
+        items[index].quantity -= 1;
+        this.selectedItems.set(items);
+      } else {
+        this.removeItem(variantId);
+      }
+    }
+  }
+
+  protected increaseItem(variantId: string): void {
+    const items = [...this.selectedItems()];
+    const index = items.findIndex((item) => item.variant_id === variantId);
+    if (index >= 0) {
+      items[index].quantity += 1;
+      this.selectedItems.set(items);
+    }
   }
 
   protected updateQuantity(index: number, quantity: number): void {

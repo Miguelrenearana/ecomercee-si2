@@ -34,6 +34,8 @@ export interface CatalogProductVariant {
   discount_amount?: string;
   size_id: string | null;
   color_id: string | null;
+  size_name?: string | null;
+  color_name?: string | null;
   image_url?: string | null;
   image_public_id?: string | null;
   garment_points: Point[] | null;
@@ -51,6 +53,9 @@ export interface CatalogProduct {
   id: string;
   name: string;
   description: string | null;
+  category_name?: string | null;
+  has_discount?: boolean;
+  discounted_price?: string | null;
   discount_type?: DiscountType | null;
   discount_value?: string | null;
   provider_id?: string | null;
