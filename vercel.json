@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "cd frontend && npm install --legacy-peer-deps",
+  "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist/frontend/browser",
   "rewrites": [
     {
