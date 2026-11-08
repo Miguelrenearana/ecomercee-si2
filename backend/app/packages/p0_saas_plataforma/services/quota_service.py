@@ -37,7 +37,7 @@ def validate_branch_quota(db: Session, company_id: UUID) -> tuple[int, int]:
     Valida si la empresa puede crear una nueva sucursal segun su plan de suscripcion.
     - Plan Basico: maximo 3 sucursales.
     - Plan Profesional: maximo 10 sucursales.
-    - Plan Empresarial: maximo 25 sucursales.
+    - Plan Empresarial: maximo 223 sucursales.
     Lanza QuotaExceededException si ya alcanzo el limite.
     """
     subscription = get_active_subscription(db, company_id)

@@ -49,13 +49,17 @@ export class ReservationApiService {
     return this.api.patch<ReservationResponse>(`/reservations/${reservationId}/branch-cancel${query}`, {});
   }
 
-    listBranchConflicts(branchId?: string) {
-    const query = branchId ? '?branch_id=' + encodeURIComponent(branchId) : '';
-    return this.api.get<ApiResponse<ReservationConflictItem[]>>('/reservations/branch/conflicts' + query);
+  listBranchConflicts(branchId?: string) {
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.get<ApiResponse<ReservationConflictItem[]>>(`/reservations/branch/conflicts${query}`);
+  }
+
+  runSweeper() {
+    return this.api.post<ApiResponse<{ expired_reservations: number; expired_orders: number }>>('/reservations/sweeper', {});
   }
 
   resolveConflict(reservationId: string, payload: ReservationConflictResolveRequest, branchId?: string) {
-    const query = branchId ? '?branch_id=' + encodeURIComponent(branchId) : '';
-    return this.api.post<ReservationResponse>('/reservations/' + encodeURIComponent(reservationId) + '/resolve-conflict' + query, payload);
+    const query = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return this.api.post<ReservationResponse>(`/reservations/${encodeURIComponent(reservationId)}/resolve-conflict${query}`, payload);
   }
 }

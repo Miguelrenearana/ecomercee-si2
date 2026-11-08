@@ -50,6 +50,7 @@ export class ReservationsPageComponent {
   protected readonly substituteVariantId = signal<string>('');
   protected readonly resolutionNotes = signal<string>('');
   protected readonly resolving = signal(false);
+  protected readonly sweeping = signal(false);
 
   constructor() {
     void this.loadData();
@@ -121,6 +122,25 @@ export class ReservationsPageComponent {
   protected async refresh(): Promise<void> {
     await this.loadReservations();
     await this.loadConflicts();
+  }
+
+  protected async triggerSweeper(): Promise<void> {
+    this.sweeping.set(true);
+    try {
+      const resp = await firstValueFrom(this.reservationApi.runSweeper());
+      const data = resp.data;
+      const count = data?.expired_reservations ?? 0;
+      toast.success(
+        count > 0
+          ? `Barrido completado: ${count} reserva(s) vencida(s) liberadas y stock devuelto a inventario.`
+          : 'Barrido ejecutado: No se encontraron reservas pendientes vencidas en este momento.'
+      );
+      await this.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'No se pudo ejecutar el barrido de reservas vencidas.'));
+    } finally {
+      this.sweeping.set(false);
+    }
   }
 
   protected selectReservation(reservation: Reservation): void {

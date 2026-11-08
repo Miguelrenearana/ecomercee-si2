@@ -30,7 +30,7 @@
             {{ q.plan_name }}
           </span>
           <span class="text-xs text-slate-400">·</span>
-          <span class="text-xs text-slate-600 font-medium">Límite: hasta {{ q.max_branches }} sucursales</span>
+          <span class="text-xs text-slate-600 font-medium">Límite: hasta {{ q.max_branches }} sucursales activas</span>
         </div>
         <div class="text-xs font-medium">
           @if (q.can_create_branch) {
@@ -46,13 +46,18 @@
       </div>
 
       <!-- Barra de progreso -->
-      <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+      <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
         <div
-          class="h-2.5 rounded-full transition-all duration-500"
+          class="h-2 rounded-full transition-all duration-500"
           [class.bg-emerald-600]="q.can_create_branch"
           [class.bg-amber-500]="!q.can_create_branch"
           [style.width.%]="(q.current_active_branches / q.max_branches) * 100"
         ></div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-0.5">
+        <span>Consumo en tiempo real: <strong class="text-slate-800">{{ q.current_active_branches }}</strong> de <strong class="text-slate-800">{{ q.max_branches }}</strong> sucursales activas</span>
+        <span class="text-slate-400">Desactivar o eliminar sucursales libera el cupo de inmediato</span>
       </div>
 
       @if (!q.can_create_branch) {
@@ -82,7 +87,7 @@
         </thead>
         <tbody class="divide-y divide-slate-100 text-slate-700">
           @for (branch of branches(); track branch.id) {
-            <tr class="hover:bg-slate-50/70 transition-colors">
+            <tr class="hover:bg-slate-50/70 transition-colors" [class.opacity-70]="!branch.is_active">
               <!-- Nombre & Default Badge -->
               <td class="px-4 py-3.5">
                 <div class="font-semibold text-slate-900">{{ branch.name }}</div>
@@ -116,11 +121,11 @@
               <td class="px-4 py-3.5">
                 @if (branch.is_active) {
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Activa
+                    <span class="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Activa
                   </span>
                 } @else {
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                    Inactiva
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200" title="Al estar inactiva no consume cupo de la cuota del plan">
+                    <span class="mr-1.5 h-1.5 w-1.5 rounded-full bg-slate-400"></span> Inactiva · Cupo libre
                   </span>
                 }
               </td>
