@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import String, or_
 from sqlalchemy.orm import Session
 
 from app.packages.p1_gestion_usuarios_acceso.models.branch import Branch
@@ -350,8 +351,27 @@ def list_sales_by_branch(db: Session, branch_id: UUID | None = None, user_id: UU
     return sorted(sales + orders, key=lambda sale: sale["created_at"], reverse=True)
 
 
-def get_sale(db: Session, branch_id: UUID | None, sale_id: UUID, user_id: UUID | None = None, tenant_id: UUID | None = None):
-    query = db.query(Sale).filter(Sale.id == sale_id)
+def get_sale(db: Session, branch_id: UUID | None, sale_id: UUID | str, user_id: UUID | None = None, tenant_id: UUID | None = None):
+    parsed_uuid = None
+    if isinstance(sale_id, UUID):
+        parsed_uuid = sale_id
+    elif isinstance(sale_id, str):
+        try:
+            parsed_uuid = UUID(sale_id.strip())
+        except Exception:
+            parsed_uuid = None
+
+    if parsed_uuid:
+        query = db.query(Sale).filter(or_(Sale.id == parsed_uuid, Sale.client_sale_id == parsed_uuid))
+    else:
+        raw_str = str(sale_id).strip()
+        query = db.query(Sale).filter(
+            or_(
+                Sale.cash_reference.ilike(f"%{raw_str}%"),
+                Sale.id.cast(String).ilike(f"%{raw_str}%"),
+            )
+        )
+
     if tenant_id is not None:
         query = query.filter(Sale.tenant_id == tenant_id)
     if branch_id is not None:

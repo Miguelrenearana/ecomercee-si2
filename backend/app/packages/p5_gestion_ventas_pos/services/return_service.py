@@ -6,6 +6,7 @@ from uuid import UUID
 import uuid
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.packages.p0_saas_plataforma.models.company import Company
@@ -83,10 +84,13 @@ def quote_garment_return(
             detail="Empresa tenant no encontrada.",
         )
 
-    # 1. Validar que la venta exista y pertenezca al tenant
+    # 1. Validar que la venta exista y pertenezca al tenant (admite Sale.id o client_sale_id)
     sale = (
         db.query(Sale)
-        .filter(Sale.id == req.sale_id, Sale.tenant_id == tenant_id)
+        .filter(
+            or_(Sale.id == req.sale_id, Sale.client_sale_id == req.sale_id),
+            Sale.tenant_id == tenant_id,
+        )
         .first()
     )
     if not sale:
@@ -94,12 +98,13 @@ def quote_garment_return(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="La venta original no fue encontrada para este tenant.",
         )
+    resolved_sale_id = sale.id
 
     # 2. Validar que la prenda esté en la venta original
     sale_item = (
         db.query(SaleItem)
         .filter(
-            SaleItem.sale_id == req.sale_id,
+            SaleItem.sale_id == resolved_sale_id,
             SaleItem.variant_id == req.variant_id,
         )
         .first()
@@ -175,10 +180,13 @@ def process_garment_return(
             detail="Política de Devolución: La prenda debe contar con su etiqueta textil intacta y no presentar señales de uso o desgaste.",
         )
 
-    # 2. Validar venta y pertenencia
+    # 2. Validar venta y pertenencia (admite Sale.id o client_sale_id)
     sale = (
         db.query(Sale)
-        .filter(Sale.id == req.sale_id, Sale.tenant_id == tenant_id)
+        .filter(
+            or_(Sale.id == req.sale_id, Sale.client_sale_id == req.sale_id),
+            Sale.tenant_id == tenant_id,
+        )
         .first()
     )
     if not sale:
@@ -186,12 +194,13 @@ def process_garment_return(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="La venta original no fue encontrada para este tenant.",
         )
+    resolved_sale_id = sale.id
 
     # 3. Validar ítem de la venta original
     sale_item = (
         db.query(SaleItem)
         .filter(
-            SaleItem.sale_id == req.sale_id,
+            SaleItem.sale_id == resolved_sale_id,
             SaleItem.variant_id == req.variant_id,
         )
         .first()
@@ -255,7 +264,7 @@ def process_garment_return(
         tenant_id=tenant_id,
         branch_id=branch_id,
         cashier_id=cashier_id,
-        sale_id=req.sale_id,
+        sale_id=sale.id,
         variant_id=req.variant_id,
         quantity=1,
         original_item_amount=original_price,

@@ -9,6 +9,8 @@ import { HlmCardImports } from '../../../components/card/src';
 import { HlmInputImports } from '../../../components/input/src';
 import { HlmTextareaImports } from '../../../components/textarea/src';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
+import { CatalogProduct } from '../../shared/models/catalog.model';
+import { CatalogApiService } from '../../shared/services/catalog-api.service';
 import { SessionService } from '../../shared/services/session.service';
 import {
   SaleConflict,
@@ -31,10 +33,13 @@ import { SalesApiService } from '../../shared/services/sales-api.service';
   templateUrl: './sale-conflicts-page.component.html',
 })
 export class SaleConflictsPageComponent {
+  private readonly catalogApi = inject(CatalogApiService);
   private readonly salesApi = inject(SalesApiService);
   private readonly session = inject(SessionService);
 
   protected readonly conflicts = signal<SaleConflict[]>([]);
+  protected readonly branchProducts = signal<CatalogProduct[]>([]);
+  protected readonly loadingBranchProducts = signal<boolean>(false);
   protected readonly loading = signal<boolean>(false);
   protected readonly resolving = signal<boolean>(false);
 
@@ -80,12 +85,28 @@ export class SaleConflictsPageComponent {
     }
   }
 
+  async loadBranchProducts(): Promise<void> {
+    const branchId = this.session.user()?.branch_id ?? undefined;
+    this.loadingBranchProducts.set(true);
+    try {
+      const resp = await firstValueFrom(this.catalogApi.listProducts({ branch_id: branchId }));
+      this.branchProducts.set((resp.data ?? []) as CatalogProduct[]);
+    } catch {
+      this.branchProducts.set([]);
+    } finally {
+      this.loadingBranchProducts.set(false);
+    }
+  }
+
   openResolutionModal(conflict: SaleConflict): void {
     this.selectedConflict.set(conflict);
     this.resolutionType.set('negative_stock');
     this.resolutionNote.set('');
     this.substituteVariantId.set('');
     this.isModalOpen.set(true);
+    if (this.branchProducts().length === 0) {
+      void this.loadBranchProducts();
+    }
   }
 
   closeModal(): void {

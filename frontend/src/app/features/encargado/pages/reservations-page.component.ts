@@ -12,7 +12,7 @@ import { HlmCardImports } from '../../../components/card/src';
 import { HlmTable } from '../../../components/table/src';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
 import { requestWithToast } from '../../../core/utils/request-toast.util';
-import { CatalogBranch } from '../../shared/models/catalog.model';
+import { CatalogBranch, CatalogProduct } from '../../shared/models/catalog.model';
 import {
   ConflictResolutionType,
   Reservation,
@@ -51,6 +51,8 @@ export class ReservationsPageComponent {
   protected readonly resolutionNotes = signal<string>('');
   protected readonly resolving = signal(false);
   protected readonly sweeping = signal(false);
+  protected readonly branchProducts = signal<CatalogProduct[]>([]);
+  protected readonly loadingBranchProducts = signal(false);
 
   constructor() {
     void this.loadData();
@@ -158,6 +160,9 @@ export class ReservationsPageComponent {
     this.extendedDays.set(1);
     this.substituteVariantId.set('');
     this.resolutionNotes.set('');
+    if (this.branchProducts().length === 0) {
+      void this.loadBranchProducts();
+    }
   }
 
   protected closeResolveModal(): void {
@@ -266,6 +271,21 @@ export class ReservationsPageComponent {
     } catch {
       // Endpoint puede no tener conflictos
       this.conflicts.set([]);
+    }
+  }
+
+  private async loadBranchProducts(): Promise<void> {
+    const branchId = this.branchId;
+    this.loadingBranchProducts.set(true);
+    try {
+      const resp = await firstValueFrom(
+        this.catalogApi.listProducts({ branch_id: branchId ?? undefined })
+      );
+      this.branchProducts.set((resp.data ?? []) as CatalogProduct[]);
+    } catch {
+      this.branchProducts.set([]);
+    } finally {
+      this.loadingBranchProducts.set(false);
     }
   }
 

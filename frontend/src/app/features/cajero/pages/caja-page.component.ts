@@ -384,23 +384,6 @@ export class CajaPageComponent {
     }
   }
 
-  protected removeItem(variantId: string): void {
-    this.selectedItems.set(this.selectedItems().filter((item) => item.variant_id !== variantId));
-  }
-
-  protected increaseItem(variantId: string): void {
-    const items = this.selectedItems().map((item) =>
-      item.variant_id === variantId ? { ...item, quantity: item.quantity + 1 } : item
-    );
-    this.selectedItems.set(items);
-  }
-
-  protected decreaseItem(variantId: string): void {
-    const items = this.selectedItems()
-      .map((item) => (item.variant_id === variantId ? { ...item, quantity: item.quantity - 1 } : item))
-      .filter((item) => item.quantity > 0);
-    this.selectedItems.set(items);
-  }
 
   protected addVariant(product: CatalogProduct, variant: CatalogProductVariant): void {
     const items = [...this.selectedItems()];

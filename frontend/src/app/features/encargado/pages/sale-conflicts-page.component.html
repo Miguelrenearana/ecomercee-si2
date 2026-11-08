@@ -258,22 +258,48 @@
           </div>
         </div>
 
-        <!-- Inputs condicionales para Vía 2 (Sustitución) -->
+        <!-- Selector visual para Vía 2 (Sustitución) -->
         <div *ngIf="resolutionType() === 'substitute'" class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-emerald-900">
-            UUID de la Variante Sustituta con Stock Disponible *
+            Selecciona la Variante Sustituta con Stock Disponible en Sucursal *
           </label>
-          <input
-            hlmInput
-            type="text"
-            placeholder="Ej. a0b1c2d3-e4f5-6789-0123-456789abcdef"
-            [ngModel]="substituteVariantId()"
-            (ngModelChange)="substituteVariantId.set($event)"
-            class="bg-white"
-          />
-          <p class="text-xs text-slate-500">
-            El sistema verificará con bloqueo pesimista que la nueva variante posea stock suficiente en esta sucursal.
-          </p>
+
+          <div *ngIf="loadingBranchProducts()" class="py-3 text-center text-xs text-slate-500">
+            Cargando catálogo disponible en sucursal...
+          </div>
+
+          <div *ngIf="!loadingBranchProducts()" class="max-h-48 overflow-y-auto space-y-1.5 bg-white rounded-lg border border-slate-200 p-2">
+            <ng-container *ngFor="let prod of branchProducts()">
+              <button
+                *ngFor="let variant of prod.variants"
+                type="button"
+                class="w-full text-left p-2.5 rounded-lg border text-xs flex items-center justify-between transition"
+                [ngClass]="substituteVariantId() === variant.id
+                  ? 'border-emerald-600 bg-emerald-50/80 font-semibold text-emerald-900 shadow-sm'
+                  : 'border-slate-100 hover:bg-slate-50 text-slate-700'"
+                (click)="substituteVariantId.set(variant.id)"
+              >
+                <div>
+                  <p class="font-bold text-slate-900">{{ prod.name }}</p>
+                  <p class="text-[11px] text-slate-500 font-mono">
+                    SKU: {{ variant.sku }} · Talla: {{ variant.size_name || 'Única' }} · Color: {{ variant.color_name || 'Estándar' }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <span class="font-bold text-slate-800">Bs {{ variant.price }}</span>
+                  <p class="text-[10px] text-emerald-700 font-medium">Disponible</p>
+                </div>
+              </button>
+            </ng-container>
+            <p *ngIf="branchProducts().length === 0" class="p-3 text-center text-xs text-slate-400">
+              No se encontraron prendas registradas en esta sucursal.
+            </p>
+          </div>
+
+          <div *ngIf="substituteVariantId()" class="flex items-center justify-between text-xs text-emerald-800 bg-white p-2.5 rounded-md border border-emerald-300">
+            <span>Prenda sustituta seleccionada: <strong class="font-mono">{{ substituteVariantId().slice(0, 13) }}...</strong></span>
+            <button type="button" class="text-xs text-slate-500 hover:text-rose-600 underline font-medium" (click)="substituteVariantId.set('')">Cambiar</button>
+          </div>
         </div>
 
         <!-- Detalle explicativo de la resolución activa -->

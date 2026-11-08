@@ -47,7 +47,7 @@ async def list_branch_sales_route(
 
 @router.get("/{sale_id}")
 async def get_sale_route(
-    sale_id: UUID,
+    sale_id: str,
     db: Session = Depends(get_db),
     branch_id: UUID | None = Query(default=None),
     current_branch_id: UUID | None = Depends(get_current_branch_id),
