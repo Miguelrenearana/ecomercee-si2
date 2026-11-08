@@ -269,6 +269,13 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'demand-forecast',
+            loadComponent: () =>
+              import('./features/admin/pages/admin-demand-forecast-page.component').then(
+                (m) => m.AdminDemandForecastPageComponent,
+              ),
+          },
+          {
             path: 'ml-dataset',
             loadComponent: () =>
               import('./features/admin/pages/admin-ml-dataset-page.component').then(

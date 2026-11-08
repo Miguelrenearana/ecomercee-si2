@@ -15,6 +15,7 @@ import {
   lucideShoppingCart,
   lucideSparkles,
   lucideTicket,
+  lucideTrendingUp,
   lucideUserRound,
   lucideUsers,
 } from '@ng-icons/lucide';
@@ -87,6 +88,7 @@ type SidebarSection = {
       lucidePackageSearch,
       lucideShoppingCart,
       lucideTicket,
+      lucideTrendingUp,
       lucideUserRound,
       lucideUsers,
     }),
@@ -211,6 +213,7 @@ export class AppShellComponent {
               { label: 'Dashboard', route: '/app/admin', icon: 'lucideLayoutDashboard', exact: true },
               { label: 'Reportes', route: '/app/admin/reports', icon: 'lucideClipboardList', exact: true },
               { label: 'Dataset ML (CU22)', route: '/app/admin/ml-dataset', icon: 'lucideSparkles' },
+              { label: 'Demanda Predictiva (CU23)', route: '/app/admin/demand-forecast', icon: 'lucideTrendingUp' },
             ],
           },
           {
