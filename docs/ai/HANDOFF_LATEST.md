@@ -6,7 +6,7 @@
 
 ### 1. Avances Consolidados en esta Sesión
 
-0. **Implementación Backend y Verificación de CU22 (Dataset Sintético de Moda Textil - Carril C):**
+0. **Implementación Fullstack de CU22 (Dataset Sintético de Moda Textil - Carril C):**
    - **Backend (`p6_inteligencia_analitica`):**
      - Modelo SQLAlchemy [`synthetic_dataset.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/models/synthetic_dataset.py): tabla `synthetic_datasets` con persistencia de metadatos, distribuciones por talla y categoría, tasas de cambio/devolución y ruta física de almacenamiento en CSV.
      - Esquemas Pydantic v2 [`synthetic_dataset_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/synthetic_dataset_schema.py): `SyntheticDatasetGenerateRequest` y `SyntheticDatasetSummary`.
@@ -22,6 +22,10 @@
        - `GET /api/ml/synthetic-dataset/latest`: Consulta metadatos del último dataset del tenant.
        - `GET /api/ml/synthetic-dataset/{dataset_id}/download`: Descarga en streaming del archivo CSV.
      - Suite automatizada [`backend/tests/test_cu22_synthetic_dataset.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu22_synthetic_dataset.py) con **5/5 pruebas PASSED (100%)**.
+- **Frontend Web Angular 21 (PWA):**
+     - Modelos en [`synthetic-dataset.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/models/synthetic-dataset.model.ts) y cliente HTTP en [`synthetic-dataset-api.service.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/shared/services/synthetic-dataset-api.service.ts).
+     - Componente [`admin-ml-dataset-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/admin/pages/admin-ml-dataset-page.component.ts) bajo directrices `/design-taste-frontend` (`app-screens.md`): interfaz de control estocástico con preajustes de volumen (1k a 25k) y meses (6m a 24m), switches de políticas comerciales CU17 y CU18, visualización de distribución gaussiana por tallas en barras proporcionales y descarga de archivo CSV.
+     - Ruteo en [`app.routes.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/app.routes.ts) (`/app/admin/ml-dataset`) y acceso directo en sidebar de [`app-shell.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/layouts/app-shell.component.ts).
    - **Aseguramiento de Calidad:**
      - 5 casos de prueba formalizados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU22-01` a `CP-CU22-05`).
      - Total acumulado del proyecto: **98/98 casos de prueba PASSED (100%)**.

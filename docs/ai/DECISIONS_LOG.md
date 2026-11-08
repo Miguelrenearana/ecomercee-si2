@@ -303,3 +303,22 @@
 
 
 
+
+### Registro 27: 2026-11-08 — Gobernanza y CRUD de Planes Comerciales SaaS en Panel Superadmin (CU02)
+* **Decisión:**
+  1. **Expansión de la API de Planes SaaS (`p0_saas_plataforma`):**
+     - Se completó el ciclo REST del catálogo de planes comerciales implementando en [`plan_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/routes/plan_routes.py):
+       - `PUT /saas/plans/{plan_id}`: Actualización atómica de nombre, tarifas mensuales, cuotas de sucursales físicas y flags de IA.
+       - `PATCH /saas/plans/{plan_id}/status`: Conmutación de estado activo/en pausa del plan.
+       - `DELETE /saas/plans/{plan_id}`: Eliminación física si no tiene suscripciones vinculadas o desactivación automática preventiva si existen contratos activos.
+       - Parámetro `include_inactive=true` en `GET /saas/plans` para auditoría del Superadmin.
+     - Esquemas Pydantic v2 en [`plan_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p0_saas_plataforma/schemas/plan_schema.py): `PlanUpdate` y `PlanStatusUpdate`.
+  2. **Actualización de Cuota Máxima del Plan Empresarial:**
+     - Se ajustó el límite superior del plan EMPRESARIAL a **223 sucursales activas** en seeder y servicios (`tenant_service.py`, `quota_service.py`), permitiendo al Superadmin gobernar cadenas masivas de boutiques con total flexibilidad.
+  3. **Interfaz de Gestión de Planes en Frontend Web (Angular 21):**
+     - Diseñada bajo la directriz `/design-taste-frontend` (`references/app-screens.md`):
+       - Componente de página [`plans-page.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/superadmin/pages/plans-page.component.ts) con tarjetas de métricas honestas (sin ornamentos slop), barra de navegación por pestañas (`Empresas` $\leftrightarrow$ `Planes & Cuotas`), filtrado reactivo de planes activos y cuadrícula de tarjetas comerciales de alta fidelidad.
+       - Modal de gestión [`plan-form-modal.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/features/superadmin/components/plan-form-modal.component.ts) con validaciones Pydantic/TypeScript reactivas y feedback con Sonner toast.
+       - Integración en [`CompanyService`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/services/company.service.ts), [`company.model.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/models/company.model.ts), [`app.routes.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/app.routes.ts) (`/app/superadmin/plans`) y barra lateral en [`app-shell.component.ts`](file:///c:/Users/PERSONAL/ecommerce-SI2/frontend/src/app/core/layouts/app-shell.component.ts).
+* **Motivo:** El Superadmin carecía de una vista de control para gobernar las cuotas técnicas y tarifas comerciales de la plataforma SaaS sin manipular directamente la base de datos SQL.
+* **Impacto:** Gobernanza total del CU02 en Frontend y Backend con arquitectura desacoplada.

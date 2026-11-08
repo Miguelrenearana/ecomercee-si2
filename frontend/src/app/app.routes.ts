@@ -269,6 +269,13 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'ml-dataset',
+            loadComponent: () =>
+              import('./features/admin/pages/admin-ml-dataset-page.component').then(
+                (m) => m.AdminMlDatasetPageComponent,
+              ),
+          },
+          {
             path: 'orders',
             loadComponent: () => import('./features/encargado/pages/orders-page.component').then((m) => m.EncargadoOrdersPageComponent),
           },
@@ -288,6 +295,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/superadmin/pages/tenants-page.component').then(
                 (m) => m.TenantsPageComponent,
+              ),
+          },
+          {
+            path: 'plans',
+            loadComponent: () =>
+              import('./features/superadmin/pages/plans-page.component').then(
+                (m) => m.PlansPageComponent,
               ),
           },
         ],

@@ -13,6 +13,7 @@ import {
   lucideLogOut,
   lucidePackageSearch,
   lucideShoppingCart,
+  lucideSparkles,
   lucideTicket,
   lucideUserRound,
   lucideUsers,
@@ -75,6 +76,7 @@ type SidebarSection = {
   ],
   providers: [
     provideIcons({
+      lucideSparkles,
       lucideBell,
       lucideCalendarDays,
       lucideChevronDown,
@@ -197,6 +199,7 @@ export class AppShellComponent {
             title: 'Plataforma SaaS Master',
             items: [
               { label: 'Empresas (Tenants)', route: '/app/superadmin/tenants', icon: 'lucideLayoutDashboard', exact: true },
+              { label: 'Planes y Cuotas', route: '/app/superadmin/plans', icon: 'lucideTicket', exact: true },
             ],
           },
         ];
@@ -207,6 +210,7 @@ export class AppShellComponent {
             items: [
               { label: 'Dashboard', route: '/app/admin', icon: 'lucideLayoutDashboard', exact: true },
               { label: 'Reportes', route: '/app/admin/reports', icon: 'lucideClipboardList', exact: true },
+              { label: 'Dataset ML (CU22)', route: '/app/admin/ml-dataset', icon: 'lucideSparkles' },
             ],
           },
           {

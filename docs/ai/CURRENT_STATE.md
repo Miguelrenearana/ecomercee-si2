@@ -18,8 +18,8 @@
 
 1. **`CU01: Registrar y Gestionar Empresas (Tenants)` [Nuevo 2P - 100%]:**  
    Backend `p0_saas_plataforma` con aislamiento por `tenant_id`, tabla `companies`, base de datos central y portal Superadmin operativo en `/app/superadmin/tenants`.
-2. **`CU02: Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas` [Nuevo 2P - 100%]:**  
-   Catálogo de 3 planes (Básico máx. 3 sucursales, Profesional máx. 10 sucursales, Empresarial ilimitado), timestamps de auditoría, Downgrade Guard en `/api/saas/subscriptions` y modal reactivo de cambio de plan.
+2. **`CU02: Gestionar Planes de Suscripción (Básico, Pro, Empresarial) y Cuotas` [Nuevo 2P - 100% Completo]:**  
+   Catálogo de planes comerciales flexibles (Básico máx. 3 sucursales, Profesional máx. 10 sucursales, Empresarial hasta 223 sucursales), endpoints completos CRUD en `/api/saas/plans` (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`), interfaz administrativa `/app/superadmin/plans` bajo `/design-taste-frontend`, timestamps de auditoría, Downgrade Guard en `/api/saas/subscriptions` y modal reactivo de asignación de plan.
 3. **`CU03: Iniciar Sesión Multitenant con JWT y Claims de Tenant` [Modificado 1P - 100%]:**  
    Token JWT con inyección obligatoria de `sub`, `rol`, `tenant_id` y `branch_id`. Login desacoplado de dependencias externas en `environment.ts` y selector de 2 actores (`Clientes` vs `Administrativos`).
 4. **`CU04: Gestionar Sucursales Bajo Límites del Plan` [Modificado 1P - 100% Blindado]:**  

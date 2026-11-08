@@ -326,7 +326,7 @@ Las pruebas de caja negra evalúan la funcionalidad del sistema basándose exclu
 
 ---
 
-### CU22: Generar Dataset Sintético de Ventas y Estacionalidad Textil
+### 3.22. CU22: Generar Dataset Sintético de Ventas y Estacionalidad Textil (Carril C - Pipeline ML)
 **Objetivo de Calidad:** Validar que los Administradores de Tenant con planes de IA habilitados (Plan Profesional o Empresarial) puedan inicializar conjuntos estocásticos de datos sintéticos históricos ($\ge 1,000$ registros) que reproduzcan estacionalidad textil boliviana, distribución gaussiana de tallas (M y L predominantes), picos quincenales, cambios de prenda con cobro de diferencia $\Delta$ (CU17) y devoluciones con retención 20%-50% (CU18), garantizando aislamiento multitenant estricto y denegación inmediata a planes básicos o roles no directivos.
 
 **Ficha Técnica de Cobertura:**
@@ -342,6 +342,17 @@ Las pruebas de caja negra evalúan la funcionalidad del sistema basándose exclu
 | **CP-CU22-03** | **Control de acceso por rol: rechazo a usuarios operativos no directivos** | Usuario con rol `cajero` o `delivery` autenticado dentro de un tenant con Plan Profesional. | Petición `POST /api/ml/synthetic-dataset/generate`. | 1. Usuario no autorizado envía petición.<br>2. Endpoint verifica `current_user.rol in ['administrador', 'superadmin']`. | Código `HTTP 403 Forbidden`. Mensaje: *"Solo administradores de tienda o superadministradores pueden calibrar y generar datasets."* | Denegación inmediata de la operación preservando la gobernanza directiva del SaaS. | **APROBADO** |
 | **CP-CU22-04** | **Aislamiento multitenant e integridad estadística del CSV exportado** | Dataset sintético generado con éxito para Tenant PRO. | Inspección de columnas y registros del archivo CSV físico en servidor. | 1. Lee CSV generado mediante Pandas.<br>2. Comprueba que todos los registros tengan `tenant_id` y `branch_id` correctos.<br>3. Evalúa distribución de tallas M vs XS. | 100% de filas corresponden al tenant. Frecuencia de talla M significativamente superior a XS (distribución normal). Columnas de políticas (CU17/CU18) presentes. | Integridad de datos y aislamiento multitenant confirmados al 100% sin mezclar sucursales ajenas. | **APROBADO** |
 | **CP-CU22-05** | **Consulta de metadatos de último dataset y descarga en streaming de CSV** | Dataset sintético previamente generado en la base de datos. | Peticiones `GET /api/ml/synthetic-dataset/latest` y `GET /api/ml/synthetic-dataset/{id}/download`. | 1. Consulta último dataset.<br>2. Extrae `dataset_id`.<br>3. Descarga archivo en streaming. | Código `HTTP 200 OK`. `latest` retorna metadatos completos y URL de descarga. Endpoint de descarga retorna `Content-Type: text/csv` y `Content-Disposition: attachment`. | Metadatos obtenidos y descarga binaria en streaming del CSV completada con éxito. | **APROBADO** |
+
+**Evidencia de Ejecución Pytest (`backend/tests/test_cu22_synthetic_dataset.py`):**
+```text
+tests/test_cu22_synthetic_dataset.py::test_generate_synthetic_dataset_pro_plan PASSED [ 20%]
+tests/test_cu22_synthetic_dataset.py::test_rejection_basic_plan_no_ai_access PASSED   [ 40%]
+tests/test_cu22_synthetic_dataset.py::test_rejection_non_admin_role PASSED            [ 60%]
+tests/test_cu22_synthetic_dataset.py::test_multitenant_isolation_and_file_content PASSED [ 80%]
+tests/test_cu22_synthetic_dataset.py::test_get_latest_and_download_dataset PASSED    [100%]
+
+======================= 5 passed, 6 warnings in 33.34s ========================
+```
 
 ---
 

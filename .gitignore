@@ -95,6 +95,8 @@ htmlcov/
 build/
 *.egg-info/
 .eggs/
+backend/app/data/synthetic/
+backend/app/data/*.csv
 
 # ------------------------------------------------------------------------------
 # Flutter & Mobile (Dart / Android / iOS)
