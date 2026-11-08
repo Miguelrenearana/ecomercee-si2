@@ -378,6 +378,9 @@ class DemandForecastingService:
             .all()
         )
 
+        # Mapa de tallas pre-cargado para evitar N+1
+        size_name_map = {s.id: s.name for s in db.query(Size).all()}
+
         size_forecasts: List[SizeForecastDetail] = []
         total_projected = 0
         critical_count = 0
@@ -387,7 +390,7 @@ class DemandForecastingService:
         size_list = []
         if variants:
             for v in variants:
-                s_name = v.size.name if v.size else "M"
+                s_name = size_name_map.get(v.size_id, "M")
                 # Consultar stock actual en inventario
                 inv_query = db.query(Inventory).filter(Inventory.variant_id == v.id)
                 if request.branch_id:
@@ -397,7 +400,7 @@ class DemandForecastingService:
                 size_list.append((s_name, v.id, v.sku, float(v.price), cur_stock))
         else:
             for s_name in ["S", "M", "L", "XL"]:
-                size_list.append((s_name, None, None, float(product.price or 100.0), 0))
+                size_list.append((s_name, None, None, 100.0, 0))
 
         # 5. Inferencia por cada talla para las semanas proyectadas
         for size_name, variant_id, sku, price, current_stock in size_list:
@@ -486,7 +489,12 @@ class DemandForecastingService:
 
         db.commit()
 
-        category_name = product.category.name if product.category else "Moda General"
+        category = (
+            db.query(Category).filter(Category.id == product.category_id).first()
+            if product.category_id
+            else None
+        )
+        category_name = category.name if category else "Moda General"
 
         return DemandForecastResponse(
             product_id=product.id,
@@ -528,6 +536,7 @@ class DemandForecastingService:
             .filter(Product.tenant_id == tenant_id)
         )
         variants = query.all()
+        size_name_map = {s.id: s.name for s in db.query(Size).all()}
         alerts: List[StockReorderAlert] = []
 
         for v in variants:
@@ -538,7 +547,7 @@ class DemandForecastingService:
             cur_stock = sum(inv.quantity for inv in inventories)
 
             # Heurística de predicción base por talla (M y L tienen más demanda)
-            s_name = v.size.name if v.size else "M"
+            s_name = size_name_map.get(v.size_id, "M")
             expected_demand = 18 if s_name in ["M", "L"] else 10
 
             if cur_stock < expected_demand:
