@@ -1,14 +1,19 @@
 // ============================================================================
-// Diagrama de Clases (Modelo Físico y Relacional) para Enterprise Architect — JScript
+// Diagrama de Clases UML Conceptual y Dominio para Enterprise Architect — JScript
 // FashionStore — Plataforma SaaS Multitenant (2do Parcial)
 //
 // CARACTERÍSTICAS UML 2.5+:
-//   - 46 Entidades: 41 tablas físicas + 5 especializaciones de roles de usuario.
-//   - 9 «association class»: Tablas asociativas que resuelven relaciones M:N con atributos propios.
-//   - 10 Relaciones de COMPOSICIÓN («Aggregation» fuerte, rombo negro en el Todo, sin flechas).
-//   - 6 Relaciones de HERENCIA / GENERALIZACIÓN («Generalization», triángulo cerrado en el Padre).
-//   - 63 Asociaciones estándar con cardinalidades explícitas y líneas simples sin flechas.
-//   - Geometría compacta (165 x 110 px) en grilla de 6 columnas para legibilidad óptima.
+//   - 52 Clases de Dominio (47 tablas de backend + 5 roles conceptuales).
+//   - SIN CLAVES FORÁNEAS (FK) en los atributos: En UML conceptual puro, las
+//     asociaciones representan las referencias; las FKs no se duplican como columnas.
+//   - 10 Clases Asociación NATIVAS («association class»): Vinculadas mediante
+//     la arquitectura interna de Enterprise Architect (NType = 17 y PDATA1) que
+//     dibuja la línea punteada reglamentaria de la clase asociación sobre el conector.
+//   - 5 Relaciones de COMPOSICIÓN FUERTE («Association» con ClientEnd.Aggregation = 2, rombo negro).
+//   - 5 Relaciones de AGREGACIÓN COMPARTIDA («Association» con ClientEnd.Aggregation = 1, rombo blanco).
+//   - 6 Relaciones de HERENCIA / GENERALIZACIÓN («Generalization», triángulo blanco en el padre).
+//   - 74 Asociaciones estándar con multiplicidades explícitas.
+//   - Geometría compacta (175 x 115 px) en grilla matricial de 6 columnas.
 // ============================================================================
 
 var Repo = (typeof Repository != "undefined") ? Repository : null;
@@ -22,7 +27,7 @@ function Log(msg) {
 }
 
 // ---------------------------------------------------------------------------
-// Mapeo de tipos SQL a tipos nativos de Enterprise Architect
+// Mapeo de tipos de datos a tipos nativos de Enterprise Architect
 // ---------------------------------------------------------------------------
 function eaType(sqlType) {
     var t = (sqlType + "").toLowerCase();
@@ -37,383 +42,273 @@ function eaType(sqlType) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. RELACIONES: [Origen, Destino, Verbo, CardOrigen, CardDestino, TipoRelacion]
-// TipoRelacion:
-//   - "Composition":    Composición UML (Rombo negro en Origen, Parte en Destino, sin flechas)
-//   - "Generalization": Herencia UML (Origen = Subclase, Destino = Superclase)
-//   - "Association":    Asociación estándar UML (Línea simple sin flechas)
+// 1. CLASES ASOCIACIÓN NATIVAS DE ENTERPRISE ARCHITECT
+// [NombreClaseAsoc, ClaseOrigen, ClaseDestino, VerboAsociacion, CardOrigen, CardDestino]
 // ---------------------------------------------------------------------------
-var RELACIONES = [
-    // === COMPOSICIONES FUERTES (Todo -> Parte, Rombo Negro) ===
-    ["companies",                     "subscriptions",        "posee_suscripciones",  "1", "1..*", "Composition"],
-    ["products",                      "product_variants",     "compone_variantes",    "1", "1..*", "Composition"],
-    ["sales",                         "sale_items",           "compone_items",        "1", "1..*", "Composition"],
-    ["orders",                        "order_items",          "compone_items",        "1", "1..*", "Composition"],
-    ["inventory_transfers",           "inventory_transfer_items","compone_traspaso",  "1", "1..*", "Composition"],
-    ["replenishment_requests",        "replenishment_request_items","compone_reposicion","1","1..*","Composition"],
-    ["carts",                         "cart_items",           "contiene_items",       "1", "0..*", "Composition"],
-    ["reservations",                  "reservation_items",    "reserva_items",        "1", "1..*", "Composition"],
-    ["users",                         "user_body_profiles",   "posee_perfil_medidas", "1", "0..1", "Composition"],
-    ["conversations",                 "conversation_messages","contiene_mensajes",    "1", "0..*", "Composition"],
-
-    // === HERENCIA / GENERALIZACIÓN (Subclase -> Superclase, Triángulo Cerrado) ===
-    ["providers",                     "users",                "",                     "",  "",     "Generalization"],
-    ["Superadministrador",            "users",                "",                     "",  "",     "Generalization"],
-    ["AdministradorTenant",           "users",                "",                     "",  "",     "Generalization"],
-    ["EncargadoSucursal",             "users",                "",                     "",  "",     "Generalization"],
-    ["Cajero",                        "users",                "",                     "",  "",     "Generalization"],
-    ["Cliente",                       "users",                "",                     "",  "",     "Generalization"],
-
-    // === ASOCIACIONES CON CLASES ASOCIADAS (Resolución de relaciones M:N) ===
-    ["sale_items",                    "product_variants",     "vende_variante",       "0..*", "1", "Association"],
-    ["order_items",                   "product_variants",     "detalla_variante",     "0..*", "1", "Association"],
-    ["inventory",                     "branches",             "almacenado_en",        "0..*", "1", "Association"],
-    ["inventory",                     "product_variants",     "posee_stock_de",       "0..*", "1", "Association"],
-    ["cart_items",                    "product_variants",     "incluye_variante",     "0..*", "1", "Association"],
-    ["reservation_items",             "product_variants",     "reserva_prenda",       "0..*", "1", "Association"],
-    ["inventory_transfer_items",      "product_variants",     "transfiere_prenda",    "0..*", "1", "Association"],
-    ["replenishment_request_items",   "product_variants",     "solicita_variante",    "0..*", "1", "Association"],
-    ["provider_variant_availability", "providers",            "declara_abastecimiento","0..*", "1", "Association"],
-    ["provider_variant_availability", "product_variants",     "para_variante",        "0..*", "1", "Association"],
-    ["promotion_code_usages",         "promotion_codes",      "registra_uso_de",      "0..*", "1", "Association"],
-    ["promotion_code_usages",         "users",                "usado_por",            "0..*", "1", "Association"],
-
-    // === ASOCIACIONES REGULARES DEL SISTEMA (Líneas simples sin flechas) ===
-    // --- Núcleo SaaS Multitenant (p0) ---
-    ["subscriptions",                 "plans",                "asigna_plan",          "0..*", "1", "Association"],
-    ["branches",                      "companies",            "pertenece_a_tenant",   "0..*", "1", "Association"],
-    ["users",                         "companies",            "pertenece_a_tenant",   "0..*", "1", "Association"],
-    ["products",                      "companies",            "propiedad_de_tenant",  "0..*", "1", "Association"],
-    ["product_variants",              "companies",            "es_de_tenant",         "0..*", "1", "Association"],
-    ["inventory",                     "companies",            "stock_de_tenant",      "0..*", "1", "Association"],
-    ["inventory_transfers",           "companies",            "traspaso_de_tenant",   "0..*", "1", "Association"],
-    ["offline_operations",            "companies",            "audita_offline",       "0..*", "0..1","Association"],
-    ["catalog_cache",                 "companies",            "cache_de_tenant",      "0..*", "0..1","Association"],
-
-    // --- Usuarios, Sucursales y Asignaciones (p1) ---
-    ["users",                         "branches",             "asignado_a",           "0..*", "0..1","Association"],
-
-    // --- Catálogo Textil y Clasificación (p2) ---
-    ["collections",                   "seasons",              "pertenece_a",          "0..*", "1", "Association"],
-    ["products",                      "collections",          "se_asocia_a",          "0..*", "0..1","Association"],
-    ["products",                      "categories",           "se_clasifica_en",      "0..*", "1", "Association"],
-    ["products",                      "providers",            "abastecido_por",       "0..*", "0..1","Association"],
-    ["product_variants",              "sizes",                "tiene_talla",          "0..*", "1", "Association"],
-    ["product_variants",              "colors",               "tiene_color",          "0..*", "1", "Association"],
-
-    // --- Inventario, Movimientos y Kardex (p3) ---
-    ["inventory_movements",           "product_variants",     "afecta_stock_de",      "0..*", "1", "Association"],
-    ["inventory_movements",           "branches",             "se_ejecuta_en",        "0..*", "1", "Association"],
-    ["inventory_movements",           "branches",             "transfiere_a",         "0..*", "0..1","Association"],
-    ["inventory_movements",           "users",                "es_registrado_por",    "0..*", "0..1","Association"],
-    ["inventory_transfers",           "branches",             "sale_de_sucursal",     "0..*", "1", "Association"],
-    ["inventory_transfers",           "branches",             "llega_a_sucursal",     "0..*", "1", "Association"],
-    ["inventory_transfers",           "users",                "solicitado_por",       "0..*", "1", "Association"],
-    ["inventory_transfers",           "users",                "recibido_por",         "0..*", "0..1","Association"],
-    ["offline_operations",            "branches",             "ejecuta_en_sucursal",  "0..*", "0..1","Association"],
-
-    // --- Reposición con Proveedores (p3) ---
-    ["replenishment_requests",        "providers",            "solicita_a_proveedor", "0..*", "1", "Association"],
-    ["replenishment_requests",        "branches",             "se_destina_a_sucursal","0..*", "1", "Association"],
-    ["replenishment_requests",        "users",                "solicitado_por",       "0..*", "1", "Association"],
-    ["replenishment_requests",        "users",                "aceptado_por",         "0..*", "0..1","Association"],
-    ["replenishment_requests",        "users",                "preparado_por",        "0..*", "0..1","Association"],
-    ["replenishment_requests",        "users",                "recibido_por",         "0..*", "0..1","Association"],
-    ["replenishment_requests",        "users",                "entregado_por",        "0..*", "0..1","Association"],
-
-    // --- Carrito, Promociones y Reservas (p4) ---
-    ["carts",                         "users",                "posee_carrito",        "0..1", "1", "Association"],
-    ["carts",                         "promotion_codes",      "aplica_cupon",         "0..*", "0..1","Association"],
-    ["cart_items",                    "reservations",         "asocia_reserva",       "0..*", "0..1","Association"],
-    ["reservations",                  "branches",             "se_solicita_en",       "0..*", "1", "Association"],
-    ["reservations",                  "users",                "es_solicitada_por",    "0..*", "1", "Association"],
-    ["reservations",                  "carts",                "proviene_de_carrito",  "0..1", "0..1","Association"],
-    ["promotion_codes",               "branches",             "es_valido_en",         "0..*", "0..1","Association"],
-    ["promotion_codes",               "users",                "creado_por",           "0..*", "1", "Association"],
-
-    // --- Compras Stripe y Órdenes (p4) ---
-    ["orders",                        "users",                "realiza_pedido",       "0..*", "1", "Association"],
-    ["orders",                        "promotion_codes",      "aplica_descuento",     "0..*", "0..1","Association"],
-    ["orders",                        "branches",             "se_recoge_en",         "0..*", "0..1","Association"],
-    ["order_items",                   "reservations",         "origina_de_reserva",   "0..*", "0..1","Association"],
-    ["payment_attempts",              "orders",               "procesa_pago_de",      "0..*", "0..1","Association"],
-    ["payment_attempts",              "carts",                "valida_pago_carrito",  "0..*", "0..1","Association"],
-
-    // --- Ventas POS y Políticas Comerciales (p5) ---
-    ["sales",                         "branches",             "se_registra_en",       "0..*", "1", "Association"],
-    ["sales",                         "users",                "es_atendida_por",      "0..*", "1", "Association"],
-    ["sales",                         "reservations",         "convierte_reserva",    "0..*", "0..1","Association"],
-
-    // --- IA, Recomendaciones, Chatbot y Push (p6) ---
-    ["user_product_interactions",     "users",                "generada_por",         "0..*", "1", "Association"],
-    ["user_product_interactions",     "products",             "interactua_con",       "0..*", "1", "Association"],
-    ["user_product_interactions",     "orders",               "asociada_a_orden",     "0..*", "0..1","Association"],
-    ["user_product_interactions",     "product_variants",     "variante_interactuada","0..*", "0..1","Association"],
-    ["user_product_interactions",     "branches",             "ocurre_en_sucursal",   "0..*", "0..1","Association"],
-    ["conversations",                 "users",                "iniciada_por",         "0..*", "1", "Association"],
-    ["notifications",                 "users",                "notifica_a_usuario",   "0..*", "1", "Association"],
-    ["device_tokens",                 "users",                "dispositivo_de_usuario","0..*","1", "Association"]
+var CLASES_ASOCIACION = [
+    ["provider_variant_availability", "providers", "product_variants", "abastece_variante", "0..*", "0..*"],
+    ["inventory", "branches", "product_variants", "almacena_stock", "0..*", "0..*"],
+    ["sale_items", "sales", "product_variants", "vende_item", "1", "1..*"],
+    ["order_items", "orders", "product_variants", "factura_item", "1", "1..*"],
+    ["cart_items", "carts", "product_variants", "agrega_item", "0..1", "0..*"],
+    ["reservation_items", "reservations", "product_variants", "reserva_item", "0..*", "1..*"],
+    ["inventory_transfer_items", "inventory_transfers", "product_variants", "traslada_item", "1", "1..*"],
+    ["replenishment_request_items", "replenishment_requests", "product_variants", "solicita_item", "1", "1..*"],
+    ["promotion_code_usages", "promotion_codes", "users", "canjeado_por", "0..*", "0..*"],
+    ["user_product_interactions", "users", "products", "interactua_con", "0..*", "0..*"]
 ];
 
 // ---------------------------------------------------------------------------
-// 2. TABLAS Y CLASES: [nombre, [ [columna, tipoSQL, estereotipo] ], estereotipo_clase]
-// Total: 46 entidades (41 físicas + 5 roles especializados)
+// 2. RELACIONES ESTÁNDAR: [Origen, Destino, Verbo, CardOrigen, CardDestino, TipoRelacion]
+// TipoRelacion: "Composition", "Aggregation", "Generalization", "Association"
+// ---------------------------------------------------------------------------
+var RELACIONES = [
+    ["companies", "subscriptions", "posee_suscripciones", "1", "1..*", "Composition"],
+    ["products", "product_variants", "compone_variantes", "1", "1..*", "Composition"],
+    ["users", "user_body_profiles", "posee_perfil_medidas", "1", "0..1", "Composition"],
+    ["conversations", "conversation_messages", "contiene_mensajes", "1", "0..*", "Composition"],
+    ["companies", "catalog_cache", "cache_snapshot", "1", "0..1", "Composition"],
+    ["companies", "branches", "red_sucursales", "1", "1..*", "Aggregation"],
+    ["companies", "users", "emplea_personal", "1", "1..*", "Aggregation"],
+    ["seasons", "collections", "agrupa_colecciones", "1", "0..*", "Aggregation"],
+    ["categories", "products", "clasifica_prendas", "1", "0..*", "Aggregation"],
+    ["collections", "products", "asocia_prendas", "0..1", "0..*", "Aggregation"],
+    ["providers", "users", "", "", "", "Generalization"],
+    ["Superadministrador", "users", "", "", "", "Generalization"],
+    ["AdministradorTenant", "users", "", "", "", "Generalization"],
+    ["EncargadoSucursal", "users", "", "", "", "Generalization"],
+    ["Cajero", "users", "", "", "", "Generalization"],
+    ["Cliente", "users", "", "", "", "Generalization"],
+    ["subscriptions", "plans", "asigna_plan", "0..*", "1", "Association"],
+    ["branches", "companies", "pertenece_a_tenant", "0..*", "1", "Association"],
+    ["users", "companies", "pertenece_a_tenant", "0..*", "1", "Association"],
+    ["products", "companies", "propiedad_de_tenant", "0..*", "1", "Association"],
+    ["product_variants", "companies", "es_de_tenant", "0..*", "1", "Association"],
+    ["inventory_transfers", "companies", "traspaso_de_tenant", "0..*", "1", "Association"],
+    ["offline_operations", "companies", "audita_offline", "0..*", "1", "Association"],
+    ["users", "branches", "asignado_a", "0..*", "0..1", "Association"],
+    ["products", "providers", "abastecido_por", "0..*", "0..1", "Association"],
+    ["product_variants", "sizes", "tiene_talla", "0..*", "1", "Association"],
+    ["product_variants", "colors", "tiene_color", "0..*", "1", "Association"],
+    ["inventory_movements", "product_variants", "afecta_stock_de", "0..*", "1", "Association"],
+    ["inventory_movements", "branches", "se_ejecuta_en", "0..*", "1", "Association"],
+    ["inventory_movements", "branches", "transfiere_a", "0..*", "0..1", "Association"],
+    ["inventory_movements", "users", "registrado_por", "0..*", "0..1", "Association"],
+    ["inventory_transfers", "branches", "sale_de_sucursal", "0..*", "1", "Association"],
+    ["inventory_transfers", "branches", "llega_a_sucursal", "0..*", "1", "Association"],
+    ["inventory_transfers", "users", "solicitado_por", "0..*", "1", "Association"],
+    ["inventory_transfers", "users", "recibido_por", "0..*", "0..1", "Association"],
+    ["offline_operations", "branches", "ejecuta_en_sucursal", "0..*", "0..1", "Association"],
+    ["replenishment_requests", "providers", "solicita_a_proveedor", "0..*", "1", "Association"],
+    ["replenishment_requests", "branches", "destina_a_sucursal", "0..*", "1", "Association"],
+    ["replenishment_requests", "users", "solicitado_por", "0..*", "1", "Association"],
+    ["replenishment_requests", "users", "aceptado_por", "0..*", "0..1", "Association"],
+    ["replenishment_requests", "users", "preparado_por", "0..*", "0..1", "Association"],
+    ["replenishment_requests", "users", "recibido_por", "0..*", "0..1", "Association"],
+    ["replenishment_requests", "users", "entregado_por", "0..*", "0..1", "Association"],
+    ["carts", "users", "posee_carrito", "0..1", "1", "Association"],
+    ["carts", "promotion_codes", "aplica_cupon", "0..*", "0..1", "Association"],
+    ["reservations", "branches", "se_solicita_en", "0..*", "1", "Association"],
+    ["reservations", "users", "es_solicitada_por", "0..*", "1", "Association"],
+    ["reservations", "users", "resuelta_por", "0..*", "0..1", "Association"],
+    ["reservations", "carts", "proviene_de_carrito", "0..1", "0..1", "Association"],
+    ["promotion_codes", "branches", "es_valido_en", "0..*", "0..1", "Association"],
+    ["promotion_codes", "users", "creado_por", "0..*", "1", "Association"],
+    ["orders", "users", "realiza_pedido", "0..*", "1", "Association"],
+    ["orders", "promotion_codes", "aplica_descuento", "0..*", "0..1", "Association"],
+    ["orders", "branches", "recoge_en", "0..*", "0..1", "Association"],
+    ["orders", "users", "despachado_por", "0..*", "0..1", "Association"],
+    ["payment_attempts", "orders", "procesa_pago_de", "0..*", "0..1", "Association"],
+    ["payment_attempts", "carts", "valida_pago_carrito", "0..*", "0..1", "Association"],
+    ["sales", "branches", "se_registra_en", "0..*", "1", "Association"],
+    ["sales", "users", "atendida_por", "0..*", "1", "Association"],
+    ["sales", "reservations", "convierte_reserva", "0..*", "0..1", "Association"],
+    ["garment_exchanges", "sales", "cambia_prenda_de_venta", "0..*", "1", "Association"],
+    ["garment_exchanges", "branches", "opera_en_sucursal", "0..*", "1", "Association"],
+    ["garment_exchanges", "users", "atendido_por_cajero", "0..*", "1", "Association"],
+    ["garment_exchanges", "product_variants", "prenda_original", "0..*", "1", "Association"],
+    ["garment_exchanges", "product_variants", "prenda_nueva", "0..*", "1", "Association"],
+    ["garment_exchanges", "companies", "pertenece_a_tenant", "0..*", "1", "Association"],
+    ["garment_returns", "sales", "devuelve_prenda_de_venta", "0..*", "1", "Association"],
+    ["garment_returns", "branches", "opera_en_sucursal", "0..*", "1", "Association"],
+    ["garment_returns", "users", "atendido_por_cajero", "0..*", "1", "Association"],
+    ["garment_returns", "product_variants", "reincorpora_prenda", "0..*", "1", "Association"],
+    ["garment_returns", "companies", "pertenece_a_tenant", "0..*", "1", "Association"],
+    ["sync_operations", "companies", "sincroniza_tenant", "0..*", "1", "Association"],
+    ["sync_operations", "branches", "sincroniza_sucursal", "0..*", "0..1", "Association"],
+    ["customer_segments", "companies", "segmenta_tenant", "0..*", "1", "Association"],
+    ["customer_segments", "users", "segmenta_usuario", "0..*", "1", "Association"],
+    ["demand_forecasts", "companies", "pronostico_tenant", "0..*", "1", "Association"],
+    ["demand_forecasts", "branches", "pronostico_sucursal", "0..*", "1", "Association"],
+    ["demand_forecasts", "product_variants", "pronostico_variante", "0..*", "1", "Association"],
+    ["ml_models", "companies", "modelo_de_tenant", "0..*", "1", "Association"],
+    ["conversations", "users", "iniciada_por", "0..*", "1", "Association"],
+    ["conversations", "companies", "tenant_chat", "0..*", "1", "Association"],
+    ["conversation_messages", "companies", "tenant_mensaje", "0..*", "1", "Association"],
+    ["notifications", "users", "notifica_a_usuario", "0..*", "1", "Association"],
+    ["device_tokens", "users", "dispositivo_de_usuario", "0..*", "1", "Association"]
+];
+
+// ---------------------------------------------------------------------------
+// 3. CLASES Y ATRIBUTOS (SIN ATRIBUTOS FORÁNEOS 'FK')
+// Total: 52 entidades conceptuales con PK, enums y atributos intrínsecos.
 // ---------------------------------------------------------------------------
 var TABLAS = [
-    // --- PAQUETE P0: PLATAFORMA SAAS Y TENANCY ---
     ["companies", [
-        ["id", "UUID", "PK"], ["name", "VARCHAR(150)", null], ["business_name", "VARCHAR(200)", null],
-        ["nit_rut", "VARCHAR(50)", null], ["subdomain", "VARCHAR(63)", null],
-        ["status", "VARCHAR(20)", null], ["email", "VARCHAR(120)", null],
-        ["phone", "VARCHAR(30)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(150)", null], ["business_name", "VARCHAR(200)", null], ["nit_rut", "VARCHAR(50)", null], ["subdomain", "VARCHAR(63)", null], ["status", "VARCHAR(20)", "enum"], ["email", "VARCHAR(120)", null], ["phone", "VARCHAR(30)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["plans", [
-        ["id", "UUID", "PK"], ["name", "VARCHAR(50)", null], ["code", "VARCHAR(30)", null],
-        ["max_branches", "INTEGER", null], ["has_ai_access", "BOOLEAN", null],
-        ["price_monthly", "NUMERIC(10,2)", null], ["is_active", "BOOLEAN", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(50)", null], ["code", "VARCHAR(30)", null], ["description", "TEXT", null], ["max_branches", "INTEGER", null], ["has_ai_access", "BOOLEAN", null], ["price_monthly", "NUMERIC(10,2)", null], ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["subscriptions", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["plan_id", "UUID", "FK"],
-        ["status", "VARCHAR(20)", null], ["current_period_start", "TIMESTAMP", null],
-        ["current_period_end", "TIMESTAMP", null], ["cancel_at_period_end", "BOOLEAN", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["status", "VARCHAR(20)", "enum"], ["start_date", "TIMESTAMP", null], ["end_date", "TIMESTAMP", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["catalog_cache", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["version", "INTEGER", null],
-        ["payload", "JSON", null], ["generated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["version", "INTEGER", null], ["payload", "JSON", null], ["cached_at", "TIMESTAMP", null]
     ], "table"],
-
-    // --- PAQUETE P1: GESTIÓN DE USUARIOS, ACCESO Y PROVEEDORES ---
     ["users", [
-        ["id", "UUID", "PK"], ["tenant_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["email", "VARCHAR(120)", null], ["hashed_password", "VARCHAR(255)", null],
-        ["first_name", "VARCHAR(50)", null], ["last_name", "VARCHAR(50)", null],
-        ["role", "VARCHAR(30)", "enum"], ["is_active", "BOOLEAN", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null], ["email", "VARCHAR(120)", null], ["hashed_password", "VARCHAR(255)", null], ["gender", "VARCHAR(20)", null], ["rol", "VARCHAR(30)", "enum"], ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["branches", [
-        ["id", "UUID", "PK"], ["tenant_id", "UUID", "FK"], ["code", "VARCHAR(20)", null],
-        ["name", "VARCHAR(100)", null], ["address", "VARCHAR(255)", null],
-        ["phone", "VARCHAR(30)", null], ["latitude", "NUMERIC(10,7)", null],
-        ["longitude", "NUMERIC(10,7)", null], ["is_active", "BOOLEAN", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null], ["city", "VARCHAR(100)", null], ["address", "VARCHAR(255)", null], ["phone", "VARCHAR(30)", null], ["opening_hours", "VARCHAR(100)", null], ["latitude", "NUMERIC(10,7)", null], ["longitude", "NUMERIC(10,7)", null], ["is_default", "BOOLEAN", null], ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["providers", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["company_name", "VARCHAR(150)", null],
-        ["contact_name", "VARCHAR(100)", null], ["phone", "VARCHAR(30)", null],
-        ["address", "VARCHAR(255)", null], ["tax_id", "VARCHAR(50)", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["business_name", "VARCHAR(150)", null], ["contact_name", "VARCHAR(100)", null], ["phone", "VARCHAR(30)", null], ["status", "VARCHAR(20)", "enum"]
     ], "table"],
     ["user_body_profiles", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["height_cm", "NUMERIC(5,2)", null],
-        ["weight_kg", "NUMERIC(5,2)", null], ["chest_cm", "NUMERIC(5,2)", null],
-        ["waist_cm", "NUMERIC(5,2)", null], ["hip_cm", "NUMERIC(5,2)", null],
-        ["preferred_fit", "VARCHAR(30)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["top_size", "VARCHAR(20)", null], ["bottom_size", "VARCHAR(20)", null], ["shoe_size", "VARCHAR(20)", null], ["body_shape", "VARCHAR(50)", null], ["fit_preference", "VARCHAR(50)", null], ["notes", "TEXT", null]
     ], "table"],
-
-    // --- ESPECIALIZACIONES DE ROLES (HERENCIA UML DE USERS) ---
     ["Superadministrador", [
-        ["permisos_globales", "String", null],
-        ["audita_tenants", "Boolean", null]
+        ["permisos_globales", "String", null], ["audita_tenants", "Boolean", null]
     ], "role"],
     ["AdministradorTenant", [
-        ["cargo_empresa", "String", null],
-        ["gestiona_sucursales", "Boolean", null]
+        ["cargo_empresa", "String", null], ["gestiona_sucursales", "Boolean", null]
     ], "role"],
     ["EncargadoSucursal", [
-        ["codigo_empleado", "String", null],
-        ["turno", "String", null]
+        ["codigo_empleado", "String", null], ["turno", "String", null]
     ], "role"],
     ["Cajero", [
-        ["numero_caja", "String", null],
-        ["limite_efectivo", "Currency", null]
+        ["numero_caja", "String", null], ["limite_efectivo", "Currency", null]
     ], "role"],
     ["Cliente", [
-        ["puntos_fidelidad", "Integer", null],
-        ["preferencia_notificacion", "String", null]
+        ["puntos_fidelidad", "Integer", null], ["preferencia_notificacion", "String", null]
     ], "role"],
-
-    // --- CLASE ASOCIADA: PROVEEDOR - VARIANTE ---
     ["provider_variant_availability", [
-        ["id", "UUID", "PK"], ["provider_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["cost_price", "NUMERIC(10,2)", null], ["available_quantity", "INTEGER", null],
-        ["lead_time_days", "INTEGER", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null]
     ], "association class"],
-
-    // --- PAQUETE P2: CATÁLOGO DE PRENDAS Y VARIANTES ---
     ["categories", [
-        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null], ["slug", "VARCHAR(120)", null],
-        ["description", "TEXT", null], ["parent_id", "UUID", "FK"], ["is_active", "BOOLEAN", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null]
     ], "table"],
     ["seasons", [
-        ["id", "UUID", "PK"], ["name", "VARCHAR(50)", null], ["year", "INTEGER", null],
-        ["start_date", "DATE", null], ["end_date", "DATE", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(50)", null]
     ], "table"],
     ["collections", [
-        ["id", "UUID", "PK"], ["season_id", "UUID", "FK"], ["name", "VARCHAR(100)", null],
-        ["description", "TEXT", null], ["is_active", "BOOLEAN", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null]
     ], "table"],
     ["sizes", [
-        ["id", "UUID", "PK"], ["name", "VARCHAR(20)", null], ["order", "INTEGER", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(20)", null]
     ], "table"],
     ["colors", [
         ["id", "UUID", "PK"], ["name", "VARCHAR(50)", null], ["hex_code", "VARCHAR(7)", null]
     ], "table"],
     ["products", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["category_id", "UUID", "FK"],
-        ["collection_id", "UUID", "FK"], ["provider_id", "UUID", "FK"],
-        ["name", "VARCHAR(150)", null], ["code", "VARCHAR(50)", null],
-        ["description", "TEXT", null], ["base_price", "NUMERIC(10,2)", null],
-        ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["name", "VARCHAR(150)", null], ["description", "TEXT", null], ["discount_type", "VARCHAR(20)", "enum"], ["discount_value", "NUMERIC(10,2)", null]
     ], "table"],
     ["product_variants", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["product_id", "UUID", "FK"],
-        ["size_id", "UUID", "FK"], ["color_id", "UUID", "FK"],
-        ["sku", "VARCHAR(60)", null], ["price", "NUMERIC(10,2)", null],
-        ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["sku", "VARCHAR(60)", null], ["price", "NUMERIC(10,2)", null], ["image_url", "VARCHAR(255)", null], ["garment_points", "INTEGER", null], ["status", "VARCHAR(20)", "enum"]
     ], "table"],
-
-    // --- PAQUETE P3: INVENTARIO, MOVIMIENTOS Y TRASLADOS ---
     ["inventory", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["variant_id", "UUID", "FK"], ["stock", "INTEGER", null],
-        ["min_stock", "INTEGER", null], ["max_stock", "INTEGER", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["reserved_quantity", "INTEGER", null], ["minimum_stock", "INTEGER", null]
     ], "association class"],
     ["inventory_movements", [
-        ["id", "UUID", "PK"], ["variant_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["reference_branch_id", "UUID", "FK"], ["user_id", "UUID", "FK"],
-        ["quantity", "INTEGER", null], ["movement_type", "VARCHAR(20)", "enum"],
-        ["reason", "VARCHAR(255)", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["movement_type", "VARCHAR(20)", "enum"], ["quantity", "INTEGER", null], ["note", "VARCHAR(255)", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["inventory_transfers", [
-        ["id", "UUID", "PK"], ["company_id", "UUID", "FK"], ["from_branch_id", "UUID", "FK"],
-        ["to_branch_id", "UUID", "FK"], ["status", "VARCHAR(20)", "enum"],
-        ["requested_by", "UUID", "FK"], ["received_by", "UUID", "FK"],
-        ["notes", "TEXT", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["transfer_number", "VARCHAR(50)", null], ["status", "VARCHAR(20)", "enum"], ["requested_at", "TIMESTAMP", null], ["received_at", "TIMESTAMP", null], ["notes", "TEXT", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["inventory_transfer_items", [
-        ["id", "UUID", "PK"], ["transfer_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["quantity", "INTEGER", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["received_quantity", "INTEGER", null], ["created_at", "TIMESTAMP", null]
     ], "association class"],
     ["replenishment_requests", [
-        ["id", "UUID", "PK"], ["provider_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["status", "VARCHAR(20)", "enum"], ["requested_by", "UUID", "FK"],
-        ["accepted_by", "UUID", "FK"], ["prepared_by", "UUID", "FK"],
-        ["received_by", "UUID", "FK"], ["delivered_by", "UUID", "FK"],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["status", "VARCHAR(20)", "enum"], ["accepted_at", "TIMESTAMP", null], ["preparing_at", "TIMESTAMP", null], ["awaiting_receipt_at", "TIMESTAMP", null], ["delivered_at", "TIMESTAMP", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["replenishment_request_items", [
-        ["id", "UUID", "PK"], ["request_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["quantity_requested", "INTEGER", null], ["quantity_received", "INTEGER", null]
+        ["id", "UUID", "PK"], ["requested_quantity", "INTEGER", null]
     ], "association class"],
     ["offline_operations", [
-        ["id", "UUID", "PK"], ["client_operation_id", "VARCHAR(64)", null],
-        ["company_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["operation_type", "VARCHAR(30)", null], ["payload", "JSON", null],
-        ["status", "VARCHAR(20)", null], ["synced_at", "TIMESTAMP", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["operation_type", "VARCHAR(30)", null], ["payload", "JSON", null], ["synced", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["synced_at", "TIMESTAMP", null]
     ], "table"],
-
-    // --- PAQUETE P4: CARRITO, RESERVAS Y COMPRAS STRIPE ---
     ["carts", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["promotion_code_id", "UUID", "FK"],
-        ["status", "VARCHAR(20)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["status", "VARCHAR(20)", "enum"], ["subtotal", "NUMERIC(10,2)", null], ["discount_amount", "NUMERIC(10,2)", null], ["total_amount", "NUMERIC(10,2)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["cart_items", [
-        ["id", "UUID", "PK"], ["cart_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["reservation_id", "UUID", "FK"], ["quantity", "INTEGER", null],
-        ["unit_price", "NUMERIC(10,2)", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null]
     ], "association class"],
     ["reservations", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["branch_id", "UUID", "FK"],
-        ["cart_id", "UUID", "FK"], ["status", "VARCHAR(20)", "enum"],
-        ["expires_at", "TIMESTAMP", null], ["pickup_code", "VARCHAR(20)", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["visit_date", "DATE", null], ["expires_at", "TIMESTAMP", null], ["status", "VARCHAR(20)", "enum"], ["total_amount", "NUMERIC(10,2)", null], ["resolved_at", "TIMESTAMP", null], ["resolution_note", "VARCHAR(255)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["reservation_items", [
-        ["id", "UUID", "PK"], ["reservation_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["quantity", "INTEGER", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null]
     ], "association class"],
     ["promotion_codes", [
-        ["id", "UUID", "PK"], ["branch_id", "UUID", "FK"], ["created_by", "UUID", "FK"],
-        ["code", "VARCHAR(30)", null], ["discount_type", "VARCHAR(20)", null],
-        ["discount_value", "NUMERIC(10,2)", null], ["is_active", "BOOLEAN", null],
-        ["valid_from", "TIMESTAMP", null], ["valid_until", "TIMESTAMP", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["code", "VARCHAR(30)", null], ["discount_type", "VARCHAR(20)", "enum"], ["discount_value", "NUMERIC(10,2)", null], ["valid_from", "TIMESTAMP", null], ["valid_until", "TIMESTAMP", null], ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["promotion_code_usages", [
-        ["id", "UUID", "PK"], ["promotion_code_id", "UUID", "FK"], ["user_id", "UUID", "FK"],
-        ["used_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["used_at", "TIMESTAMP", null]
     ], "association class"],
     ["orders", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["promotion_code_id", "UUID", "FK"],
-        ["pickup_branch_id", "UUID", "FK"], ["status", "VARCHAR", "enum"],
-        ["payment_method", "VARCHAR", "enum"], ["payment_status", "VARCHAR", "enum"],
-        ["stripe_payment_intent_id", "VARCHAR", null], ["cash_reference", "VARCHAR", null],
-        ["pickup_expires_at", "TIMESTAMP", null], ["pickup_code", "VARCHAR", null],
-        ["fulfillment_status", "VARCHAR", "enum"], ["subtotal", "NUMERIC(10,2)", null],
-        ["discount_amount", "NUMERIC(10,2)", null], ["total_amount", "NUMERIC(10,2)", null],
-        ["currency", "VARCHAR", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["status", "VARCHAR(20)", "enum"], ["payment_method", "VARCHAR(20)", "enum"], ["payment_status", "VARCHAR(20)", "enum"], ["cash_reference", "VARCHAR(50)", null], ["pickup_expires_at", "TIMESTAMP", null], ["pickup_code", "VARCHAR(20)", null], ["fulfillment_status", "VARCHAR(20)", "enum"], ["delivery_type", "VARCHAR(20)", "enum"], ["shipping_address", "TEXT", null], ["tracking_number", "VARCHAR(100)", null], ["dispatched_at", "TIMESTAMP", null], ["subtotal", "NUMERIC(10,2)", null], ["discount_amount", "NUMERIC(10,2)", null], ["total_amount", "NUMERIC(10,2)", null], ["currency", "VARCHAR(10)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["order_items", [
-        ["id", "UUID", "PK"], ["order_id", "UUID", "FK"], ["reservation_id", "UUID", "FK"],
-        ["variant_id", "UUID", "FK"], ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null],
-        ["line_total", "NUMERIC(10,2)", null], ["product_id", "UUID", null],
-        ["product_name", "VARCHAR", null], ["variant_sku", "VARCHAR", null], ["size_id", "UUID", null],
-        ["color_id", "UUID", null], ["image_url", "VARCHAR", null], ["image_public_id", "VARCHAR", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null], ["line_total", "NUMERIC(10,2)", null], ["product_name", "VARCHAR(150)", null], ["variant_sku", "VARCHAR(60)", null], ["image_url", "VARCHAR(255)", null]
     ], "association class"],
     ["payment_attempts", [
-        ["id", "UUID", "PK"], ["order_id", "UUID", "FK"], ["cart_id", "UUID", "FK"],
-        ["stripe_payment_intent_id", "VARCHAR", null], ["status", "VARCHAR", null],
-        ["idempotency_key", "VARCHAR", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["status", "VARCHAR(20)", "enum"], ["idempotency_key", "VARCHAR(100)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["stripe_events", [
-        ["id", "UUID", "PK"], ["stripe_event_id", "VARCHAR", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["created_at", "TIMESTAMP", null]
     ], "table"],
-
-    // --- PAQUETE P5: VENTAS POS Y POLÍTICAS COMERCIALES ---
     ["sales", [
-        ["id", "UUID", "PK"], ["branch_id", "UUID", "FK"], ["user_id", "UUID", "FK"],
-        ["reservation_id", "UUID", "FK"], ["status", "VARCHAR", "enum"],
-        ["payment_method", "VARCHAR", "enum"], ["total_amount", "NUMERIC(10,2)", null],
-        ["cash_received", "NUMERIC(10,2)", null], ["cash_change", "NUMERIC(10,2)", null],
-        ["customer_name", "VARCHAR", null], ["customer_phone", "VARCHAR", null],
-        ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["is_offline", "BOOLEAN", null], ["synced_at", "TIMESTAMP", null], ["idempotency_key", "VARCHAR(100)", null], ["status", "VARCHAR(20)", "enum"], ["payment_method", "VARCHAR(20)", "enum"], ["payment_status", "VARCHAR(20)", "enum"], ["cash_reference", "VARCHAR(50)", null], ["subtotal", "NUMERIC(10,2)", null], ["discount_amount", "NUMERIC(10,2)", null], ["total_amount", "NUMERIC(10,2)", null], ["currency", "VARCHAR(10)", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"],
     ["sale_items", [
-        ["id", "UUID", "PK"], ["sale_id", "UUID", "FK"], ["variant_id", "UUID", "FK"],
-        ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null],
-        ["total_price", "NUMERIC(10,2)", null]
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["unit_price", "NUMERIC(10,2)", null], ["line_total", "NUMERIC(10,2)", null], ["product_name", "VARCHAR(150)", null], ["variant_sku", "VARCHAR(60)", null], ["image_url", "VARCHAR(255)", null]
     ], "association class"],
-
-    // --- PAQUETE P6: INTELIGENCIA ANALÍTICA, RECOMENDACIONES Y PUSH ---
-    ["user_product_interactions", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["product_id", "UUID", "FK"],
-        ["variant_id", "UUID", "FK"], ["branch_id", "UUID", "FK"], ["order_id", "UUID", "FK"],
-        ["interaction_type", "VARCHAR(30)", null], ["rating", "INTEGER", null],
-        ["metadata", "JSON", null], ["created_at", "TIMESTAMP", null]
+    ["garment_exchanges", [
+        ["id", "UUID", "PK"], ["price_difference", "NUMERIC(10,2)", null], ["difference_paid", "BOOLEAN", null], ["payment_method", "VARCHAR(20)", "enum"], ["status", "VARCHAR(20)", "enum"], ["notes", "TEXT", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
+    ["garment_returns", [
+        ["id", "UUID", "PK"], ["quantity", "INTEGER", null], ["original_item_amount", "NUMERIC(10,2)", null], ["retention_percentage", "NUMERIC(5,2)", null], ["retention_amount", "NUMERIC(10,2)", null], ["refund_amount", "NUMERIC(10,2)", null], ["refund_method", "VARCHAR(20)", "enum"], ["credit_note_code", "VARCHAR(50)", null], ["reason", "VARCHAR(255)", null], ["created_at", "TIMESTAMP", null]
+    ], "table"],
+    ["sync_operations", [
+        ["id", "UUID", "PK"], ["operation_type", "VARCHAR(30)", null], ["payload", "JSON", null], ["status", "VARCHAR(20)", "enum"], ["synced_at", "TIMESTAMP", null], ["created_at", "TIMESTAMP", null]
+    ], "table"],
+    ["user_product_interactions", [
+        ["id", "UUID", "PK"], ["interaction_type", "VARCHAR(30)", null], ["weight", "NUMERIC(5,2)", null], ["created_at", "TIMESTAMP", null]
+    ], "association class"],
     ["collaborative_embeddings", [
-        ["id", "UUID", "PK"], ["subject_type", "VARCHAR(16)", null], ["subject_id", "UUID", null],
-        ["vector", "TEXT", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["subject_type", "VARCHAR(16)", null], ["vector", "TEXT", null], ["updated_at", "TIMESTAMP", null]
+    ], "table"],
+    ["customer_segments", [
+        ["id", "UUID", "PK"], ["segment_label", "VARCHAR(50)", null], ["recency_days", "INTEGER", null], ["frequency_count", "INTEGER", null], ["monetary_total", "NUMERIC(10,2)", null], ["return_rate", "NUMERIC(5,2)", null], ["assigned_at", "TIMESTAMP", null]
+    ], "table"],
+    ["demand_forecasts", [
+        ["id", "UUID", "PK"], ["forecast_period", "VARCHAR(30)", null], ["predicted_units", "INTEGER", null], ["confidence_lower", "INTEGER", null], ["confidence_upper", "INTEGER", null], ["algorithm_used", "VARCHAR(50)", null], ["created_at", "TIMESTAMP", null]
+    ], "table"],
+    ["ml_models", [
+        ["id", "UUID", "PK"], ["name", "VARCHAR(100)", null], ["model_type", "VARCHAR(50)", null], ["version", "VARCHAR(20)", null], ["metrics", "JSON", null], ["model_path", "VARCHAR(255)", null], ["is_active", "BOOLEAN", null], ["trained_at", "TIMESTAMP", null]
     ], "table"],
     ["conversations", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["title", "VARCHAR(150)", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["conversation_messages", [
-        ["id", "UUID", "PK"], ["conversation_id", "UUID", "FK"], ["role", "VARCHAR(20)", null],
-        ["content", "TEXT", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["role", "VARCHAR(20)", null], ["content", "TEXT", null], ["message_data", "JSON", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["notifications", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["title", "VARCHAR(150)", null],
-        ["body", "TEXT", null], ["is_read", "BOOLEAN", null],
-        ["data", "JSON", null], ["created_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["title", "VARCHAR(150)", null], ["body", "TEXT", null], ["data", "JSON", null], ["read_at", "TIMESTAMP", null], ["dedupe_key", "VARCHAR(100)", null], ["created_at", "TIMESTAMP", null]
     ], "table"],
     ["device_tokens", [
-        ["id", "UUID", "PK"], ["user_id", "UUID", "FK"], ["token", "VARCHAR(255)", null],
-        ["platform", "VARCHAR(20)", null], ["is_active", "BOOLEAN", null],
-        ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
+        ["id", "UUID", "PK"], ["token", "VARCHAR(255)", null], ["platform", "VARCHAR(20)", null], ["is_active", "BOOLEAN", null], ["created_at", "TIMESTAMP", null], ["updated_at", "TIMESTAMP", null]
     ], "table"]
 ];
 
@@ -421,7 +316,7 @@ var TABLAS = [
 // FUNCIÓN PRINCIPAL DE EJECUCIÓN
 // ============================================================================
 function Main() {
-    Log("Iniciando creación de Modelo UML de Clases y Datos (FashionStore 2P)...");
+    Log("Iniciando creación de Diagrama de Clases UML Conceptual (FashionStore 2P)...");
 
     var packageDestino = Repo.GetTreeSelectedPackage();
     if (packageDestino == null) {
@@ -434,15 +329,15 @@ function Main() {
     }
 
     // Crear paquete contenedor
-    var model = packageDestino.Packages.AddNew("Modelo de Clases y Datos FashionStore - 2do Parcial", "");
+    var model = packageDestino.Packages.AddNew("Modelo de Clases UML Conceptual — FashionStore", "");
     model.Update();
 
     var elementos = {};
     var total = TABLAS.length;
 
-    Log("Creando " + total + " entidades estereotipadas («table», «association class», «role»)...");
+    Log("1. Creando " + total + " clases de dominio sin atributos FK...");
 
-    // 1) Crear cada entidad con su estereotipo y atributos
+    // 1) Crear cada clase con sus atributos intrínsecos (sin FKs)
     for (var i = 0; i < total; i++) {
         var tabla = TABLAS[i][0];
         var campos = TABLAS[i][1];
@@ -464,74 +359,140 @@ function Main() {
         elementos[tabla] = cls;
     }
 
-    Log("Creando " + RELACIONES.length + " relaciones (Composiciones, Herencias y Asociaciones)...");
+    Log("2. Creando " + CLASES_ASOCIACION.length + " Clases Asociación Nativas con su conector en línea punteada...");
 
-    // 2) Crear relaciones tipadas (Composición, Generalización, Asociación)
-    var creadas = 0;
-    var nComp = 0, nGen = 0, nAssoc = 0;
+    // 2) Crear Clases Asociación Nativas en Enterprise Architect
+    // Patrón Sparx Systems EA:
+    // a) Crear la Asociación normal entre Origen y Destino.
+    // b) Enlazar t_object (NType = 17, PDATA1 = Connector_ID) y t_connector (PDATA1 = Object_ID).
+    var nAssocClass = 0;
+    for (var a = 0; a < CLASES_ASOCIACION.length; a++) {
+        var ca = CLASES_ASOCIACION[a];
+        var nomClaseAsoc = ca[0];
+        var origen       = ca[1];
+        var destino      = ca[2];
+        var verbo        = ca[3];
+        var cardOrigen   = ca[4];
+        var cardDestino  = ca[5];
 
-    for (var r = 0; r < RELACIONES.length; r++) {
-        var rel = RELACIONES[r];
-        var origen  = rel[0];
-        var destino = rel[1];
-        var verbo   = rel[2];
-        var cardOrigen  = rel[3];
-        var cardDestino = rel[4];
-        var tipoRel = (rel.length > 5 && rel[5] != null) ? rel[5] : "Association";
-
-        if (elementos[origen] == null || elementos[destino] == null) {
-            Log("Aviso: No se pudo relacionar " + origen + " con " + destino + " (entidad no encontrada).");
+        if (elementos[nomClaseAsoc] == null || elementos[origen] == null || elementos[destino] == null) {
+            Log("Aviso: No se pudo crear clase asociación para " + nomClaseAsoc);
             continue;
         }
 
-        if (tipoRel == "Generalization") {
-            // HERENCIA: Origen = Subclase, Destino = Superclase. Flecha triangular cerrada en Destino.
-            var conn = elementos[origen].Connectors.AddNew("", "Generalization");
-            conn.ClientID    = elementos[origen].ElementID;
-            conn.SupplierID  = elementos[destino].ElementID;
-            conn.Direction   = "Source -> Destination";
-            conn.Update();
-            creadas++;
-            nGen++;
-        } else if (tipoRel == "Composition") {
-            // COMPOSICIÓN: Origen = Todo (Rombo Negro), Destino = Parte. Línea sólida sin flechas.
-            var conn = elementos[origen].Connectors.AddNew(verbo, "Aggregation");
-            conn.ClientID    = elementos[origen].ElementID;
-            conn.SupplierID  = elementos[destino].ElementID;
-            conn.Subtype     = "Strong";
-            conn.ClientEnd.Aggregation = 2; // 2 = Composite (Rombo negro en Origen)
+        try {
+            // Conector de asociación base
+            var conn = elementos[origen].Connectors.AddNew(verbo, "Association");
+            conn.ClientID = elementos[origen].ElementID;
+            conn.SupplierID = elementos[destino].ElementID;
             conn.ClientEnd.Cardinality = cardOrigen;
             conn.SupplierEnd.Cardinality = cardDestino;
-            conn.Direction   = "Unspecified";
+            conn.Direction = "Unspecified";
             conn.Update();
-            creadas++;
-            nComp++;
-        } else {
-            // ASOCIACIÓN ESTÁNDAR: Línea simple sin flechas con cardinalidades.
-            var conn = elementos[origen].Connectors.AddNew(verbo, "Association");
-            conn.ClientID    = elementos[origen].ElementID;
-            conn.SupplierID  = elementos[destino].ElementID;
-            conn.ClientEnd.Cardinality  = cardOrigen;
-            conn.SupplierEnd.Cardinality = cardDestino;
-            conn.Direction   = "Unspecified";
-            conn.Update();
-            creadas++;
-            nAssoc++;
+            elementos[origen].Connectors.Refresh();
+
+            var classId = elementos[nomClaseAsoc].ElementID;
+            var connId  = conn.ConnectorID;
+
+            // Enlace nativo de Clase Asociación en la base de datos de EA
+            var sql1 = "UPDATE t_object SET NType = 17, PDATA1 = '" + connId + "' WHERE Object_ID = " + classId;
+            var sql2 = "UPDATE t_connector SET PDATA1 = '" + classId + "' WHERE Connector_ID = " + connId;
+
+            Repo.Execute(sql1);
+            Repo.Execute(sql2);
+
+            nAssocClass++;
+            Log("Clase Asociación nativa enlazada: " + nomClaseAsoc + " -> (" + origen + " - " + destino + ")");
+        } catch(e) {
+            Log("Error creando clase asociación " + nomClaseAsoc + ": " + e.message);
         }
     }
 
-    Log("Creando diagrama y posicionando elementos en grilla compacta...");
+    Log("3. Creando " + RELACIONES.length + " relaciones (Composiciones, Agregaciones, Herencias y Asociaciones)...");
 
-    // 3) Crear el diagrama y distribuir las entidades
-    var diagram = model.Diagrams.AddNew("Diagrama de Clases BD — FashionStore 2P", "Logical");
+    // 3) Crear relaciones tipadas
+    var creadas = 0;
+    var nComp = 0, nAgg = 0, nGen = 0, nAssoc = 0;
+
+    for (var r = 0; r < RELACIONES.length; r++) {
+        var rel = RELACIONES[r];
+        var origen      = rel[0];
+        var destino     = rel[1];
+        var verbo       = rel[2];
+        var cardOrigen  = rel[3];
+        var cardDestino = rel[4];
+        var tipoRel     = (rel.length > 5 && rel[5] != null) ? rel[5] : "Association";
+
+        if (elementos[origen] == null || elementos[destino] == null) {
+            Log("Aviso: No se pudo relacionar " + origen + " con " + destino + " (elemento no encontrado).");
+            continue;
+        }
+
+        try {
+            if (tipoRel == "Generalization") {
+                // HERENCIA: Origen = Subclase, Destino = Superclase. Flecha triangular blanca en Destino.
+                var conn = elementos[origen].Connectors.AddNew("", "Generalization");
+                conn.ClientID    = elementos[origen].ElementID;
+                conn.SupplierID  = elementos[destino].ElementID;
+                conn.Direction   = "Source -> Destination";
+                conn.Update();
+                creadas++;
+                nGen++;
+            } else if (tipoRel == "Composition") {
+                // COMPOSICIÓN: Todo -> Parte. Rombo negro en Origen (ClientEnd.Aggregation = 2).
+                var conn = elementos[origen].Connectors.AddNew(verbo, "Association");
+                conn.ClientID    = elementos[origen].ElementID;
+                conn.SupplierID  = elementos[destino].ElementID;
+                conn.ClientEnd.Aggregation = 2; // 2 = Composite (Rombo negro en Todo)
+                conn.SupplierEnd.Aggregation = 0;
+                conn.ClientEnd.Cardinality = cardOrigen;
+                conn.SupplierEnd.Cardinality = cardDestino;
+                conn.Direction   = "Source -> Destination";
+                conn.Update();
+                creadas++;
+                nComp++;
+            } else if (tipoRel == "Aggregation") {
+                // AGREGACIÓN: Contenedor -> Contenido. Rombo blanco en Origen (ClientEnd.Aggregation = 1).
+                var conn = elementos[origen].Connectors.AddNew(verbo, "Association");
+                conn.ClientID    = elementos[origen].ElementID;
+                conn.SupplierID  = elementos[destino].ElementID;
+                conn.ClientEnd.Aggregation = 1; // 1 = Shared (Rombo blanco en Contenedor)
+                conn.SupplierEnd.Aggregation = 0;
+                conn.ClientEnd.Cardinality = cardOrigen;
+                conn.SupplierEnd.Cardinality = cardDestino;
+                conn.Direction   = "Source -> Destination";
+                conn.Update();
+                creadas++;
+                nAgg++;
+            } else {
+                // ASOCIACIÓN ESTÁNDAR: Línea simple con cardinalidades.
+                var conn = elementos[origen].Connectors.AddNew(verbo, "Association");
+                conn.ClientID    = elementos[origen].ElementID;
+                conn.SupplierID  = elementos[destino].ElementID;
+                conn.ClientEnd.Cardinality  = cardOrigen;
+                conn.SupplierEnd.Cardinality = cardDestino;
+                conn.Direction   = "Unspecified";
+                conn.Update();
+                creadas++;
+                nAssoc++;
+            }
+        } catch(err) {
+            Log("Error creando relación " + origen + " -> " + destino + ": " + err.message);
+        }
+    }
+
+    Log("4. Creando diagrama y distribuyendo elementos en grilla compacta...");
+
+    // 4) Crear el diagrama y distribuir las entidades
+    var diagram = model.Diagrams.AddNew("Diagrama de Clases UML Conceptual — FashionStore 2P", "Logical");
     diagram.Update();
 
     // Distribución compacta en matriz de 6 columnas
     var cols = 6;
-    var ancho = 165;
-    var alto = 110;
-    var gapX = 85;
-    var gapY = 75;
+    var ancho = 175;
+    var alto = 115;
+    var gapX = 90;
+    var gapY = 80;
     var x0 = 40;
     var y0 = 40;
 
@@ -554,13 +515,11 @@ function Main() {
     Repo.RefreshModelView(diagram.DiagramID);
     Repo.OpenDiagram(diagram.DiagramID);
 
-    Log("¡Éxito! Generado con " + total + " entidades (" + nComp + " Composiciones, " + nGen + " Herencias, " + nAssoc + " Asociaciones).");
+    Log("¡Éxito! Generado con " + total + " clases (" + nAssocClass + " Clases Asociación Nativas, " + nComp + " Composiciones, " + nAgg + " Agregaciones, " + nGen + " Herencias, " + nAssoc + " Asociaciones).");
     try {
-        Session.Prompt("¡Diagrama de Clases UML actualizado exitosamente!\n" +
-                       "- Total entidades: " + total + " (incluye 9 «association class» y 5 «role»)\n" +
-                       "- Composiciones (Rombo negro): " + nComp + "\n" +
-                       "- Herencias (Generalización): " + nGen + "\n" +
-                       "- Asociaciones simples: " + nAssoc, 0);
+        Session.Prompt("¡Diagrama de Clases UML actualizado exitosamente!" +
+                       "- Total entidades: " + total + " (47 tablas fisicas + 5 roles)" + 
+                       "- Composiciones (Rombo negro): " + nComp + " " + "- Agregaciones (Rombo blanco): " + nAgg + " " + "- Herencias (Generalizacion): " + nGen + "- Clases asociadas («association class»): 10" +"- Asociaciones simples: " + nAssoc, 0);
     } catch(e) {}
 }
 

@@ -9,9 +9,8 @@
 
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
-| **Implementados y Verificados (100%)** | **20 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18`, `CU19`, `CU21` |
-| **En Curso / Inmediatos (Presentación 3)** | **1 CU** | `CU20` (Gemini RAG por Voz y Texto) / `CU22` (Dataset Sintético ML) |
-| **Programados (Presentación 3)** | **5 CUs** | `CU20`, `CU22`, `CU23`, `CU24`, `CU25` |
+| **Implementados y Verificados (100%)** | **22 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18`, `CU19`, `CU20`, `CU21`, `CU22` |
+| **Programados (Presentación 3)** | **3 CUs** | `CU23`, `CU24`, `CU25` |
 
 ---
 
@@ -57,6 +56,10 @@
     Geolocalización interactiva de boutiques y trazado de rutas multimodales en aplicación móvil Flutter. Backend `p1_gestion_usuarios_acceso` con endpoint público `GET /api/branches/public` filtrado estrictamente por `tenant_id`, y base de datos poblada en `seed_saas.py` con georreferenciación de sucursales en Santa Cruz y Cochabamba. En Mobile Flutter, integración de `flutter_map: ^7.0.2` y `latlong2: ^0.9.1`, servicio híbrido de ruteo en `routing_service.dart` (Nivel 1 OSRM público sin API Key obligatoria, Nivel 2 OpenRouteService oficial y Nivel 3 fallback geodésico Haversine), controlador `BranchesMapController` con GPS del dispositivo y selector multimodal (`driving` y `walking`), y pantalla completa `BranchesMapPage` diseñada bajo directrices `/frontend-design` con paleta midnight/champagne gold, pines estilizados con halo radiante y tarjeta flotante con distancia y tiempo estimado de llegada. Suite `test_cu19_branch_public_map.py` 2/2 PASSED y unit tests móviles de ruteo en `routing_service_test.dart`.
 20. **`CU21: Exportar Reportes Empresariales a Formatos PDF y Excel` [Modificado 1P - 100%]:**  
     Emisión y exportación multi-formato de reportes de Ventas, Stock e Inventario y Movimientos de Almacén en `p6_inteligencia_analitica`. Integración de ReportLab 5.1.0 para documentos PDF oficiales apaisados con numeración dinámica "Página X de Y", membrete y tarjetas KPI; OpenPyXL 3.1.5 para hojas de cálculo Excel XLSX con formatos contables y fórmulas `=SUM(...)`; y CSV plano. Proyección granular y dinámica de columnas solicitadas por el usuario (`columns`). Aislamiento multitenant estricto y restricción por sucursal para rol `encargado`. En Frontend Web PWA Angular en `/app/admin/reports` y `/app/encargado/reports` con tabuladores fluidos, selector interactivo de columnas visibles y descarga vía blob. Suite `test_cu21_export_reports.py` con 9/9 pruebas PASSED (100%) y 9 casos formalizados en `PRUEBAS_CAJA_NEGRA.md`.
+21. **`CU20: Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG)` [Nuevo 2P - 100%]:**  
+    Procesamiento y locución de consultas analíticas ejecutivas mediante lenguaje natural y voz en `p6_inteligencia_analitica` y Angular PWA. Endpoints `POST /api/reports/voice-query` y `GET /api/reports/voice-query/capabilities`. Cumplimiento estricto de gobernanza de planes SaaS (Plan Básico bloqueado HTTP 403 Forbidden según CU02/CU04; Planes PRO y Empresarial habilitados con `has_ai_access`). Ensamble dinámico de contexto multitenant en PostgreSQL (métricas de ventas, ticket promedio, top prendas vendidas por talla/color con `SaleItem.line_total`, stock crítico <= 5 unidades y políticas de negocio de devoluciones con retención 20-50% y cambios con cobro de diferencia). Integración con Google Gemini 2.5 Flash mediante `google.genai` Client, System Prompt analítico estructurado y generación de `speech_text` optimizado para locución auditiva. Motor heurístico local resiliente ante caídas o cuotas de red (`is_fallback: true`). En Frontend Web PWA Angular, componente modal `VoiceAssistantModalComponent` integrado en `AdminReportsPageComponent` con directrices `/design-taste-frontend`: captura por voz con Web Speech API (`webkitSpeechRecognition`), síntesis de voz con `SpeechSynthesis`, animación de ondas de audio, chips sugeridos, cards de KPIs y tabla de detalle. Suite backend `test_cu20_voice_rag_reports.py` con 4/4 pruebas PASSED (100%). Diagramación ICONIX completada con scripts EA v15 (`CU20_secuencia_reportes_voz_gemini_EA.js` y `CU20_comm_reportes_voz_gemini_EA.js`), tabla comparativa y previsualización Mermaid en `docsUML/SEQUENCE_DIAGRAM_GUIDE.md`.
+22. **`CU22: Generar Dataset Sintético de Ventas y Estacionalidad Textil` [Nuevo 2P - Backend 100%]:**  
+    Generación estocástica vectorial rápida (< 2 segundos) en Python (`numpy`/`pandas`) de $\ge 1,000$ (y por defecto 10,000) transacciones sintéticas históricas en `p6_inteligencia_analitica`. Resuelve el problema del "Cold Start" de IA para nuevos suscriptores del Plan Profesional/Empresarial. Modela estacionalidad textil boliviana (otoño/invierno vs primavera/verano), distribución gaussiana de tallas (M y L predominantes), picos quincenales y de fin de mes, simulación de cambios de prenda (CU17) y devoluciones con retención del 20% al 50% (CU18). Endpoints `POST /api/ml/synthetic-dataset/generate`, `GET /api/ml/synthetic-dataset/latest` y `GET /api/ml/synthetic-dataset/{id}/download`. Gobernanza de planes SaaS con `validate_ai_access` (Plan Básico denegado con HTTP 403 Forbidden), control de acceso por rol (`administrador` y `superadmin`), y persistencia física en CSV. Suite `test_cu22_synthetic_dataset.py` con 5/5 pruebas PASSED (100%) y 5 casos formalizados en `PRUEBAS_CAJA_NEGRA.md`.
 
 ---
 
@@ -76,7 +79,7 @@
   - `p3_gestion_inventario_disponibilidad`: Inventario multisede, pack offline y disponibilidad.
   - `p4_gestion_compras_reservas`: Carrito, órdenes Stripe, despacho y reservas con vencimiento.
   - `p5_gestion_ventas_pos`: Ventas offline con UUIDv4, outbox, batch sync idempotente, cambios y devoluciones.
-  - `p6_inteligencia_analitica`: Gemini RAG voz/texto, modelos ML (Supervisado / K-Means) y OpenStreetMap.
+  - `p6_inteligencia_analitica`: Gemini RAG voz/texto, dataset sintético (`CU22`), modelos ML (`CU23`/`CU24`) y OpenStreetMap.
 
 ### Frontend Web (Angular 21 PWA)
 * Desacoplado de servidores externos mediante `runtime-config.js` y detección de localhost en `environment.ts`.
@@ -91,5 +94,6 @@
 ---
 
 ## 3. Próxima Tarea Inmediata (Presentación 3)
-* **`CU20` – Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG con audio/voz).**
-* **`CU22` – Generar Dataset Sintético de Ventas y Estacionalidad Textil (NumPy / Pandas).**
+* **`CU23` – Predecir Demanda de Ropa (ML Supervisado - RandomForestRegressor / Ridge).**
+* **`CU24` – Segmentar Clientes con K-Means (ML No Supervisado - RFM y Devoluciones).**
+* **`CU25` – Visualizar Dashboard Ejecutivo con KPIs y Métricas ML.**

@@ -4,9 +4,9 @@
 
 ---
 
-## 🎯 Estado de Situación: 20 de 25 Casos de Uso Implementados (100% Verificados)
+## 🎯 Estado de Situación: 22 de 25 Casos de Uso Implementados (100% Verificados)
 
-### Casos de Uso Listos y Funcionales (Presentación 1 y 2 al 100% + CU19 y CU21):
+### Casos de Uso Listos y Funcionales (Presentación 1 y 2 al 100% + CU19, CU20, CU21 y CU22):
 - [x] **`CU01` – Registrar y Gestionar Empresas Contratantes (Tenants)** (`p0_saas_plataforma`)
 - [x] **`CU02` – Gestionar Planes de Suscripción (Básico a 3 suc., Pro a 10 suc., Empresarial) y Cuotas** (`p0_saas_plataforma`)
 - [x] **`CU03` – Iniciar Sesión Multitenant con JWT y Claims de Tenant** (`p1_gestion_usuarios_acceso`)
@@ -26,29 +26,31 @@
 - [x] **`CU17` – Procesar Cambio de Prenda por Talla con Cobro de Diferencia y Estado** (`p5_gestion_ventas_pos`)
 - [x] **`CU18` – Procesar Devolución de Prenda con Retención Operativa y Nota de Crédito** (`p5_gestion_ventas_pos`)
 - [x] **`CU19` – Localizar Sucursales y Trazar Rutas (Carril A: Mobile OpenStreetMap / ORS)** (`p1_gestion_usuarios_acceso` + Flutter)
+- [x] **`CU20` – Generar Reportes Ejecutivos por Voz y Gemini RAG (Carril D: Generative AI)** (`p6_inteligencia_analitica` + Angular PWA)
 - [x] **`CU21` – Exportar Reportes Empresariales a Formatos PDF y Excel (Carril B: Reportes)** (`p6_inteligencia_analitica`)
+- [x] **`CU22` – Generar Dataset Sintético de Ventas y Estacionalidad Textil (Carril C: Machine Learning)** (`p6_inteligencia_analitica`)
 
 ---
 
-## 🚀 Carriles de Trabajo en Paralelo para la 3ra Presentación (5 CUs Restantes)
+## 🚀 Carriles de Trabajo en Paralelo para la 3ra Presentación (3 CUs Restantes)
 
 ```
 [Carril A: Mobile] ---------> CU19 (Mapas / Rutas Flutter con OpenStreetMap / ORS) [¡LISTO Y VERIFICADO!]
 [Carril B: Reportes] -------> CU21 (Exportación PDF / Excel) [¡LISTO Y VERIFICADO!]
-[Carril C: Pipeline ML] ----> CU22 (Dataset Sintético de Moda Textil)
+[Carril D: Generative AI] --> CU20 (Gemini RAG por Voz Multitenant) [¡LISTO Y VERIFICADO!]
+[Carril C: Pipeline ML] ----> CU22 (Dataset Sintético de Moda Textil) [¡LISTO Y VERIFICADO!]
                                    │
                                    ├──> [Chat C1] CU23 (ML Supervisado - Demanda por Talla) ──┐
                                    └──> [Chat C2] CU24 (ML No Sup. - Segmentación K-Means) ───┼──> CU25 (Dashboard)
-[Carril D: Generative AI] --> CU20 (Gemini RAG por Voz Multitenant)
 ```
 
-### Tareas Inmediatas Pendientes:
-1. **Carril D — Generative AI (`CU20`):**
-   - RAG multitenant con Gemini API y reconocimiento/síntesis por voz para reportes ejecutivos.
-2. **Carril C — Machine Learning Pipeline (`CU22`):**
-   - Script generador estocástico en Python (`numpy`, `pandas`) para simular 10,000+ compras con estacionalidad boliviana y atributos textiles.
-3. **Carril C1 — ML Supervisado (`CU23`):**
-   - Modelo de regresión Scikit-Learn (`RandomForestRegressor`) para pronóstico de demanda de prendas a 4 semanas ($R^2 \ge 0.82$).
+### Tarea Inmediata Pendiente:
+1. **Carril C1 — ML Supervisado (`CU23`):**
+   - Implementar entrenamiento, serialización con joblib y predicción de demanda de prendas a 4 semanas ($R^2 \ge 0.82$) usando `RandomForestRegressor` o `RidgeRegression` sobre el dataset generado por CU22.
+2. **Carril C2 — ML No Supervisado (`CU24`):**
+   - Segmentación de clientes mediante K-Means clustering (Recencia, Frecuencia, Monto Monetario y tasa de Devolución) con detección de codo.
+3. **Cierre de Presentación 3 — Dashboard Analítico (`CU25`):**
+   - Tablero ejecutivo unificado con visualización interactiva de ventas, predicciones de demanda y segmentos de clientes.
 4. **Carril C2 — ML No Supervisado (`CU24`):**
    - Modelo de clustering K-Means para segmentación RFM multitenant.
 5. **Dashboard Ejecutivo (`CU25`):**

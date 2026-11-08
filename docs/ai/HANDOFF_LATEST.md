@@ -1,10 +1,50 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 03/11/2026 (Cierre de CU21: Exportación de Reportes a PDF y Excel)
+## Estado de Relevo Operativo al 04/11/2026 (Cierre de CU22: Dataset Sintético de Ventas y Estacionalidad)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
+
+0. **Implementación Backend y Verificación de CU22 (Dataset Sintético de Moda Textil - Carril C):**
+   - **Backend (`p6_inteligencia_analitica`):**
+     - Modelo SQLAlchemy [`synthetic_dataset.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/models/synthetic_dataset.py): tabla `synthetic_datasets` con persistencia de metadatos, distribuciones por talla y categoría, tasas de cambio/devolución y ruta física de almacenamiento en CSV.
+     - Esquemas Pydantic v2 [`synthetic_dataset_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/synthetic_dataset_schema.py): `SyntheticDatasetGenerateRequest` y `SyntheticDatasetSummary`.
+     - Servicio [`synthetic_dataset_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/services/synthetic_dataset_service.py):
+       - Gobernanza comercial de suscripción mediante `validate_ai_access`: deniega Plan Básico con HTTP 403 Forbidden y autoriza Planes Profesional o Empresarial.
+       - Generación estocástica vectorial ultra-rápida (< 2 segundos para 10,000 registros) con NumPy y Pandas.
+       - Modelado de estacionalidad boliviana (otoño/invierno meses 5-8 vs primavera/verano), picos de quincena (14-16) y fin de mes (28-31).
+       - Distribución gaussiana de tallas (M=35%, L=25%, S=15%, XL=15%, XS=5%, XXL=5%).
+       - Simulación de cambio de prenda por talla (CU17, ~10%) y devoluciones con retención del 20% al 50% (CU18, ~8%).
+       - Aislamiento multitenant estricto (`tenant_id`, `branch_id`).
+     - Rutas REST en [`synthetic_dataset_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/routes/synthetic_dataset_routes.py):
+       - `POST /api/ml/synthetic-dataset/generate`: Genera el dataset histórico sintético.
+       - `GET /api/ml/synthetic-dataset/latest`: Consulta metadatos del último dataset del tenant.
+       - `GET /api/ml/synthetic-dataset/{dataset_id}/download`: Descarga en streaming del archivo CSV.
+     - Suite automatizada [`backend/tests/test_cu22_synthetic_dataset.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu22_synthetic_dataset.py) con **5/5 pruebas PASSED (100%)**.
+   - **Aseguramiento de Calidad:**
+     - 5 casos de prueba formalizados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU22-01` a `CP-CU22-05`).
+     - Total acumulado del proyecto: **98/98 casos de prueba PASSED (100%)**.
+
+1. **Implementación Backend y Diagramación ICONIX de CU20 (Gemini RAG con Voz):**
+   - **Backend (`p6_inteligencia_analitica`):**
+     - Schemas Pydantic en [`voice_report_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/voice_report_schema.py): `VoiceQueryRequest`, `ExecutiveKPICard`, `VoiceReportResponse`, `VoiceCapabilitiesResponse`.
+     - Servicio [`gemini_rag_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/services/gemini_rag_service.py):
+       - `verify_ai_access_for_tenant`: Gobernanza estricta de suscripciones (Plan Básico bloqueado con HTTP 403 Forbidden; Planes PRO y Empresarial permitidos con `has_ai_access`).
+       - `build_tenant_rag_context`: Agregación multitenant en PostgreSQL de ventas, ticket promedio, top prendas (`SaleItem.line_total` agrupado por talla y color), stock crítico (<= 5 unidades), devoluciones con retención 20-50% y cambios con diferencia cobrada.
+       - Inferencia con Google Gemini 2.5 Flash mediante `google.genai` Client con System Prompt analítico estricto y generación de `speech_text` optimizado para locución por TTS.
+       - `_generate_heuristic_fallback`: Fallback analítico local determinista ante caídas, timeouts o cuotas de red (`is_fallback: true`).
+     - Rutas en [`voice_report_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/routes/voice_report_routes.py):
+       - `POST /api/reports/voice-query`: Procesa consultas por voz/texto en lenguaje natural.
+       - `GET /api/reports/voice-query/capabilities`: Lista ejemplos de preguntas y estado de IA.
+     - Suite automatizada [`backend/tests/test_cu20_voice_rag_reports.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu20_voice_rag_reports.py) con **4/4 pruebas PASSED (100%)**.
+   - **Diagramación ICONIX para Enterprise Architect v15 (CU20):**
+     - Script Secuencia: [`docsUML/CUSecuencia/CU20_secuencia_reportes_voz_gemini_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUSecuencia/CU20_secuencia_reportes_voz_gemini_EA.js).
+     - Script Robustez / Comunicación: [`docsUML/CUrobustez/CU20_comm_reportes_voz_gemini_EA.js`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/CUrobustez/CU20_comm_reportes_voz_gemini_EA.js).
+     - Documentación centralizada en [`docsUML/SEQUENCE_DIAGRAM_GUIDE.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docsUML/SEQUENCE_DIAGRAM_GUIDE.md) con tabla comparativa BCE vs código fuente y previsualización Mermaid.
+   - **Aseguramiento de Calidad:**
+     - 4 casos de prueba formalizados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU20-01` a `CP-CU20-04`).
+     - Total acumulado del proyecto: **93/93 casos de prueba PASSED (100%)**.
 
 -1. **Implementación Fullstack de CU21 (Carril B: Reportes Empresariales a PDF y Excel):**
     - **Backend (`p6_inteligencia_analitica`):**

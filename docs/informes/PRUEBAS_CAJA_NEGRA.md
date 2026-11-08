@@ -287,14 +287,72 @@ Las pruebas de caja negra evalúan la funcionalidad del sistema basándose exclu
 
 ---
 
+### CU19: Localizar Sucursales y Trazar Rutas (OpenStreetMap / ORS)
+**Objetivo de Calidad:** Validar que los clientes y directivos puedan consultar geográficamente las sucursales físicas activas de su tenant sobre el mapa interactivo de OpenStreetMap en la app móvil Flutter, con marcadores interactivos, y trazar rutas de navegación multimodal (vehicular `driving-car` y peatonal `foot-walking`) con cálculo preciso de distancia y tiempo estimado de llegada (ETA) mediante la estrategia híbrida OSRM/ORS/Haversine.
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `branches`, `companies`, `RouteInfo`, `Branch`.
+- **Servicios Cartográficos y de Ruteo:** OpenStreetMap Tile Server (`tile.openstreetmap.org`), OSRM Routing Engine (`router.project-osrm.org`), OpenRouteService API (`api.openrouteservice.org`) y motor trigonométrico Haversine local.
+- **Componentes Flutter:** `BranchesMapPage`, `BranchesMapController`, `RoutingService`, `flutter_map` (TileLayer, MarkerLayer, PolylineLayer).
+- **Aislamiento Multitenant:** Endpoint público `GET /api/branches/public` filtrado estrictamente por `tenant_id`.
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU19-01** | **Consulta pública de sucursales georreferenciadas por tenant** | Sucursales de Boutique Elegance creadas en BD con coordenadas reales en Santa Cruz. | Petición `GET /api/branches/public?tenant_id={elegance_id}`. | 1. Cliente móvil consulta endpoint de sucursales.<br>2. Backend filtra sucursales activas del tenant.<br>3. Retorna array serializado con coordenadas. | Código `HTTP 200 OK`. Retorna 3 sucursales con `latitude`, `longitude`, `address`, `phone` y `opening_hours`. | Array JSON estructurado con coordenadas métricas válidas (-17.7833, -63.1821, etc.). | **APROBADO** |
+| **CP-CU19-02** | **Aislamiento multitenant estricto en catálogo de sucursales** | Empresa A (Elegance) tiene 3 sucursales en SCZ. Empresa B (Urbana) tiene 1 en CBBA. | Petición `GET /api/branches/public?tenant_id={urbana_id}`. | 1. Cliente consulta con tenant_id de Urbana.<br>2. Backend aísla los registros en PostgreSQL. | Código `HTTP 200 OK`. Retorna exactamente 1 sucursal (Cochabamba); cero sucursales de Elegance. | Aislamiento multitenant 100% estricto; no hay filtración cruzada de sucursales entre empresas. | **APROBADO** |
+| **CP-CU19-03** | **Inicialización de mapa OpenStreetMap con centrado en GPS o boutique default** | Permisos de ubicación en dispositivo Android. Dispositivo con o sin sensor GPS encendido. | Evento `BranchesMapController.initialize()` al abrir pantalla. | 1. App solicita permisos `ACCESS_FINE_LOCATION`.<br>2. Si se otorga, obtiene posición actual.<br>3. Si se deniega, centra en la sucursal principal. | Mapa centrado en la ubicación actual del cliente o en la boutique central (-17.7833, -63.1821). | Mapa renderizado fluidamente con teselas de OpenStreetMap y halo luminoso de usuario. | **APROBADO** |
+| **CP-CU19-04** | **Renderizado de pines interactivos de boutiques y selección táctil** | 3 sucursales con coordenadas registradas. | Tap sobre el marcador de la sucursal "Equipetrol". | 1. FlutterMap dibuja `MarkerLayer` con pines estilizados.<br>2. Usuario pulsa sobre pin.<br>3. Se dispara `selectBranch()`. | Pin seleccionado incrementa tamaño con halo champagne gold; se despliega modal inferior con detalles. | Tarjeta inferior desplegada con nombre "Sucursal Equipetrol", dirección, teléfono y botón "¿Cómo llegar?". | **APROBADO** |
+| **CP-CU19-05** | **Trazado de ruta multimodal vehicular (driving) vía motor OSRM/ORS** | Origen: GPS Usuario (-17.7830, -63.1820). Destino: Sucursal Ventura Mall (-17.7542, -63.1990). Modo: `driving`. | Tap en "¿Cómo llegar?" con modo Vehículo activo. | 1. Controller invoca `RoutingService.getRoute()`.<br>2. Servicio consulta endpoint OSRM.<br>3. Decodifica geometría y tiempo.<br>4. PolylineLayer traza la ruta. | Código 200 de OSRM. Ruta trazada sobre la calzada vial; tarjeta muestra distancia (aprox. 4.2 km) y tiempo (aprox. 12 min). | Polilínea azul zafiro/ámbar trazada con precisión sobre calles de la ciudad y cámara reencuadrada. | **APROBADO** |
+| **CP-CU19-06** | **Trazado de ruta multimodal peatonal (walking) con recalculo de ETA** | Mismo origen y destino que CP-CU19-05. Modo conmutado a `walking`. | Tap en selector flotante superior de transporte [ A pie ]. | 1. Usuario conmuta a modo peatonal.<br>2. Controller invalida ruta previa.<br>3. Servicio solicita ruta `walking`.<br>4. Recalcula tiempo a ritmo peatonal (aprox. 4.5 km/h). | Ruta recalculada por sendas peatonales; tiempo estimado actualizado (aprox. 55 min). | Tiempo de viaje y distancia recalculados de forma reactiva sin parpadeos ni recarga de mapa. | **APROBADO** |
+| **CP-CU19-07** | **Tolerancia a desconexión o saturación de API externa mediante fallback Haversine** | Desconexión a Internet de APIs externas o URL de ruteo simulada inaccesible. | Solicitud de ruta hacia Sucursal Central. | 1. Servicio detecta timeout o excepción HTTP.<br>2. Conmuta automáticamente al Nivel 3.<br>3. Calcula distancia radial Haversine.<br>4. Emite línea geodésica de cortesía. | Aplicación no arroja error ni pantalla roja; dibuja línea punteada/directa y muestra distancia ortodrómica estimada. | Resiliencia verificada: el usuario recibe estimación métrica y trazado de cortesía sin bloqueo de app. | **APROBADO** |
+
+---
+
+### CU20: Generar Reportes Ejecutivos por Voz y Lenguaje Natural (Gemini RAG)
+**Objetivo de Calidad:** Validar que los Administradores de Tenant puedan realizar consultas analíticas ejecutivas mediante lenguaje natural o voz, verificando la gobernanza de planes SaaS (Plan Básico bloqueado HTTP 403; Plan PRO habilitado), la agregación del contexto real del negocio (ventas, prendas más vendidas, inventario crítico, devoluciones con retención 20-50% y cambios con diferencia) y la inferencia generativa estructurada con Gemini 2.5 Flash respaldada por un motor heurístico local resiliente.
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `sales`, `sale_items`, `inventory`, `garment_returns`, `garment_exchanges`, `companies`, `plans`, `subscriptions`.
+- **Motor de IA Generativa:** Google Gemini 2.5 Flash (`gemini-2.5-flash` con Google GenAI SDK).
+- **Mecanismo de Resiliencia:** Fallback analítico local determinista con cálculo de KPIs, top prendas y locución en español neutro sin quiebres de servicio.
+- **Validación de Políticas SaaS:** Aislamiento multitenant por `tenant_id` y control de acceso estricto a IA por plan de suscripción (`has_ai_access`).
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU20-01** | **Consulta pública/autenticada de capacidades y sugerencias del asistente de voz** | Tenant autenticado en la plataforma. | Petición `GET /api/reports/voice-query/capabilities` con Bearer Token JWT. | 1. Frontend consulta capacidades al abrir modal.<br>2. Backend retorna lista de preguntas de ejemplo y estado de IA. | Código `HTTP 200 OK`. Retorna `ai_available: true`, `model: "gemini-2.5-flash"`, idioma `"es"` y array `suggested_queries`. | Capacidades y ejemplos de preguntas ejecutivas entregadas correctamente para guiar al usuario. | **APROBADO** |
+| **CP-CU20-02** | **Consulta analítica ejecutiva exitosa mediante Gemini RAG multitenant** | Empresa con Plan PRO (`has_ai_access: True`). Transacciones de ventas, inventario y devoluciones registradas. | Petición `POST /api/reports/voice-query` con payload `{"query": "¿Cuáles son las prendas más vendidas y cuánto hemos facturado en total?"}`. | 1. Usuario emite consulta de voz.<br>2. Servicio verifica plan PRO activo.<br>3. Ensambla contexto multitenant (ventas, stock, devoluciones).<br>4. Invoca Gemini 2.5 Flash con System Prompt RAG.<br>5. Serializa respuesta JSON estructurada. | Código `HTTP 200 OK`. Retorna `executive_summary`, `speech_text` optimizado para TTS, tarjetas `kpis`, array `data_preview` y `is_fallback: false`. | Reporte ejecutivo estructurado de alta fidelidad generado por Gemini en vivo y listo para locución auditiva. | **APROBADO** |
+| **CP-CU20-03** | **Bloqueo estricto de módulo de IA Generativa para Plan Básico (Políticas CU02/CU04)** | Empresa con Plan BÁSICO activo (`has_ai_access: False`, `code: "BASIC"`). | Petición `POST /api/reports/voice-query` con token de empresa básica. | 1. Usuario intenta usar asistente de voz.<br>2. Servicio evalúa `verify_ai_access_for_tenant`.<br>3. Detecta `has_ai_access is False`. | Código `HTTP 403 Forbidden`. Mensaje explicativo: *"El Plan Básico contratado no incluye acceso al módulo de IA Generativa. Actualice al Plan Profesional o Empresarial."* | Acceso denegado de forma inmediata e inviolable; se preservan los límites comerciales del SaaS. | **APROBADO** |
+| **CP-CU20-04** | **Resiliencia analítica mediante fallback heurístico local ante falla de Gemini API** | Empresa con Plan PRO. Gemini API inaccesible (simulación de timeout / error 429 cuota excedida). | Petición `POST /api/reports/voice-query` con consulta ejecutiva sobre devoluciones y cambios. | 1. Servicio intenta llamada remota a Gemini.<br>2. Captura excepción o saturación de red.<br>3. Activa automáticamente `_generate_heuristic_fallback`.<br>4. Extrae métricas del contexto PostgreSQL.<br>5. Retorna reporte válido con `is_fallback: true`. | Código `HTTP 200 OK`. Cero errores 500. Retorna `executive_summary`, `speech_text`, tarjetas `kpis` calculadas localmente y badge indicando fallback analítico. | Conmutación transparente al motor heurístico verificada; el directivo recibe su análisis sin interrupción del servicio. | **APROBADO** |
+
+---
+
+### CU22: Generar Dataset Sintético de Ventas y Estacionalidad Textil
+**Objetivo de Calidad:** Validar que los Administradores de Tenant con planes de IA habilitados (Plan Profesional o Empresarial) puedan inicializar conjuntos estocásticos de datos sintéticos históricos ($\ge 1,000$ registros) que reproduzcan estacionalidad textil boliviana, distribución gaussiana de tallas (M y L predominantes), picos quincenales, cambios de prenda con cobro de diferencia $\Delta$ (CU17) y devoluciones con retención 20%-50% (CU18), garantizando aislamiento multitenant estricto y denegación inmediata a planes básicos o roles no directivos.
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `synthetic_datasets`, `companies`, `plans`, `subscriptions`, `branches`, `products`, `product_variants`, `sizes`, `categories`.
+- **Motor Estadístico:** NumPy y Pandas con generador estocástico vectorial reproducible mediante semilla aleatoria (`random_seed`).
+- **Gobernanza de Planes SaaS:** Validación estricta con `validate_ai_access` (HTTP 403 ante Plan Básico).
+- **Aislamiento Multitenant:** Coherencia de llaves foráneas `tenant_id` y `branch_id` en cada registro del archivo CSV generado.
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU22-01** | **Generación exitosa de dataset sintético para tenant con Plan Profesional (Happy Path)** | Empresa con Plan Profesional activo (`has_ai_access: True`), sucursales y prendas registradas con variantes por talla. | Petición `POST /api/ml/synthetic-dataset/generate` con `total_records: 1000`, `months_covered: 12`, `random_seed: 42`. | 1. Administrador solicita generación.<br>2. Servicio valida plan PRO.<br>3. Lee catálogo real y genera transacciones estocásticas vectorizadas.<br>4. Persiste metadatos en BD y exporta CSV. | Código `HTTP 201 Created`. Retorna resumen con `total_records: 1000`, distribuciones por talla, categoría y tasas de cambio/devolución simuladas. | Dataset generado en < 2 segundos con 1,000 transacciones y archivo CSV almacenado en disco. | **APROBADO** |
+| **CP-CU22-02** | **Bloqueo estricto por cuota de plan SaaS (Plan Básico sin módulo de IA)** | Tenant con Plan Básico activo (`has_ai_access: False`). | Petición `POST /api/ml/synthetic-dataset/generate` con credenciales del tenant básico. | 1. Usuario intenta generar dataset.<br>2. `validate_ai_access` evalúa privilegios del plan.<br>3. Detecta ausencia de módulo IA. | Código `HTTP 403 Forbidden`. Mensaje explícito: *"El modulo de Inteligencia Artificial (Gemini y Machine Learning) requiere una suscripcion activa a Plan Profesional o Empresarial."* | Petición rechazada impidiendo el uso no contratado de capacidades analíticas avanzadas. | **APROBADO** |
+| **CP-CU22-03** | **Control de acceso por rol: rechazo a usuarios operativos no directivos** | Usuario con rol `cajero` o `delivery` autenticado dentro de un tenant con Plan Profesional. | Petición `POST /api/ml/synthetic-dataset/generate`. | 1. Usuario no autorizado envía petición.<br>2. Endpoint verifica `current_user.rol in ['administrador', 'superadmin']`. | Código `HTTP 403 Forbidden`. Mensaje: *"Solo administradores de tienda o superadministradores pueden calibrar y generar datasets."* | Denegación inmediata de la operación preservando la gobernanza directiva del SaaS. | **APROBADO** |
+| **CP-CU22-04** | **Aislamiento multitenant e integridad estadística del CSV exportado** | Dataset sintético generado con éxito para Tenant PRO. | Inspección de columnas y registros del archivo CSV físico en servidor. | 1. Lee CSV generado mediante Pandas.<br>2. Comprueba que todos los registros tengan `tenant_id` y `branch_id` correctos.<br>3. Evalúa distribución de tallas M vs XS. | 100% de filas corresponden al tenant. Frecuencia de talla M significativamente superior a XS (distribución normal). Columnas de políticas (CU17/CU18) presentes. | Integridad de datos y aislamiento multitenant confirmados al 100% sin mezclar sucursales ajenas. | **APROBADO** |
+| **CP-CU22-05** | **Consulta de metadatos de último dataset y descarga en streaming de CSV** | Dataset sintético previamente generado en la base de datos. | Peticiones `GET /api/ml/synthetic-dataset/latest` y `GET /api/ml/synthetic-dataset/{id}/download`. | 1. Consulta último dataset.<br>2. Extrae `dataset_id`.<br>3. Descarga archivo en streaming. | Código `HTTP 200 OK`. `latest` retorna metadatos completos y URL de descarga. Endpoint de descarga retorna `Content-Type: text/csv` y `Content-Disposition: attachment`. | Metadatos obtenidos y descarga binaria en streaming del CSV completada con éxito. | **APROBADO** |
+
+---
+
 ## 4. 📊 Resumen Estadístico Consolidado de Cobertura
 
 ```
 ========================================================================================
 RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA, 2DA Y 3RA PRESENTACIÓN)
 ========================================================================================
-Total Casos de Prueba Formalizados:     82
-Casos de Prueba Aprobados (PASSED):     82 (100%)
+Total Casos de Prueba Formalizados:     98
+Casos de Prueba Aprobados (PASSED):     98 (100%)
 Casos de Prueba Fallidos (FAILED):       0 (0%)
 Casos de Prueba Bloqueados:              0 (0%)
 ----------------------------------------------------------------------------------------
@@ -319,12 +377,18 @@ Distribución por Caso de Uso:
   - CU16 (Resolver Conflictos y Quiebres de Stock):     7 Casos de Prueba  [100% OK]
   - CU17 (Cambio de Prenda con Cobro Diferencia Δ):     8 Casos de Prueba  [100% OK]
   - CU18 (Devolución con Retención 20-50% y NC):        8 Casos de Prueba  [100% OK]
-  [3ra Presentación - Carril B: Reportes]
+  [3ra Presentación]
+  - CU19 (Localizar Sucursales y Rutas OSM/ORS):        7 Casos de Prueba  [100% OK]
+  - CU20 (Reportes Ejecutivos por Voz y Gemini RAG):    4 Casos de Prueba  [100% OK]
   - CU21 (Exportar Reportes a PDF y Excel):             9 Casos de Prueba  [100% OK]
+  - CU22 (Generar Dataset Sintético de Ventas y ML):    5 Casos de Prueba  [100% OK]
 ----------------------------------------------------------------------------------------
 Aislamiento Multitenant:                               Verificado al 100% (HTTP 404/403)
 Políticas de Negocio Inviolables (P1, P2, P3, P4, P5): Cumplimiento Estricto Verificado
+Inteligencia Artificial Generativa (Gemini 2.5 Flash): Verificado con RAG y Fallback Local
+Generación Estocástica de Datos y ML Pipeline (NumPy): Verificado al 100% (Estacionalidad/Gauss)
 Exportación Multi-Formato (ReportLab + OpenPyXL):       Verificado al 100% (PDF/XLSX/CSV)
+Geolocalización Móvil (OpenStreetMap + OSRM/ORS):      Verificado al 100% (Vehicular y Peatonal)
 ========================================================================================
 ```
 
