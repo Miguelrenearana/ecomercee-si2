@@ -13,6 +13,9 @@
     "test": "ng build --configuration development"
   },
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "packageManager": "npm@10.9.3",
   "dependencies": {
     "@angular/cdk": "^21.2.5",
