@@ -1,10 +1,30 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 04/11/2026 (Cierre de CU22: Dataset Sintético de Ventas y Estacionalidad)
+## Estado de Relevo Operativo al 08/11/2026 (Cierre Backend CU23: Predecir Demanda por Talla - ML Supervisado)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
+
+-1. **Implementación de Backend de CU23 (Predecir Demanda de Ropa por Talla - ML Supervisado):**
+   - **Backend (`p6_inteligencia_analitica`):**
+     - Schemas Pydantic v2 [`demand_forecast_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/demand_forecast_schema.py): `DemandTrainRequest`, `DemandTrainResponse`, `DemandForecastRequest`, `SizeForecastDetail`, `DemandForecastResponse`, `StockReorderAlert`.
+     - Servicio [`demand_forecasting_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/services/demand_forecasting_service.py):
+       - Gobernanza estricta con `validate_ai_access`: HTTP 403 Forbidden para Plan Básico, habilitado para Planes Pro y Empresarial.
+       - Extracción y ensamblado de features: `size_code`, `month`, `day_of_month`, `week_of_year`, `day_of_week`, `is_cold_season`, `is_payday_window`, `unit_price`.
+       - Pipeline con Scikit-Learn `RandomForestRegressor`: inferencia estocástica con ensamble de árboles, intervalo de confianza estadística y cálculo de bondad de ajuste ($R^2 \ge 0.84$, $MAE$, $RMSE$).
+       - Serialización del artefacto `.joblib` particionado por tenant en `backend/app/data/models/{tenant_id}_demand_rf.joblib`.
+       - Registro de trazabilidad y auditoría en tabla `ml_models`.
+       - Inferencia semanal (1 a 8 semanas) por talla (S, M, L, XL), cálculo de desbalance versus inventario en percha (`inventory` table) y emisión de alertas de reabastecimiento en `demand_forecasts`.
+     - Rutas REST en [`demand_forecast_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/routes/demand_forecast_routes.py) incorporadas a [`router.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/router.py):
+       - `POST /api/ml/demand/train`: Entrena o recalibra el modelo predictivo del tenant.
+       - `POST /api/ml/demand/forecast`: Genera proyecciones cuantitativas por talla a $N$ semanas con intervalos de confianza.
+       - `GET /api/ml/demand/alerts`: Devuelve variantes con riesgo de quiebre de stock ordenadas por urgencia (ALTA, MEDIA, BAJA).
+       - `GET /api/ml/demand/latest-model`: Retorna metadatos de auditoría del último modelo calibrado.
+     - Suite automatizada [`backend/tests/test_cu23_demand_forecasting.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu23_demand_forecasting.py) con **5/5 pruebas PASSED (100%)**.
+   - **Aseguramiento de Calidad:**
+     - 5 casos de prueba formalizados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU23-01` a `CP-CU23-05`).
+     - Total acumulado del proyecto: **103/103 casos de prueba PASSED (100%)**.
 
 0. **Implementación Fullstack de CU22 (Dataset Sintético de Moda Textil - Carril C):**
    - **Backend (`p6_inteligencia_analitica`):**

@@ -356,14 +356,45 @@ tests/test_cu22_synthetic_dataset.py::test_get_latest_and_download_dataset PASSE
 
 ---
 
+### CU23: Predecir Demanda de Ropa por Talla (ML Supervisado - RandomForestRegressor)
+
+**Objetivo de Calidad:** Validar que los Administradores y Encargados de Tienda puedan entrenar modelos de Machine Learning supervisados (`RandomForestRegressor` con Scikit-Learn) sobre transacciones reales o sintéticas (CU22) del tenant y proyectar la demanda semanal de prendas por talla (S, M, L, XL) a un horizonte de 1 a 8 semanas con métricas de bondad de ajuste ($R^2 \ge 0.80$, $MAE$, $RMSE$), alertas tempranas de reabastecimiento por quiebre proyectado y estricto bloqueo a tenants con Plan Básico.
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `demand_forecasts`, `ml_models`, `companies`, `plans`, `subscriptions`, `products`, `product_variants`, `inventory`, `sizes`, `sales`, `sale_items`.
+- **Motor de Machine Learning:** Scikit-Learn `RandomForestRegressor`, NumPy y Pandas con serialización `joblib` particionada por tenant.
+- **Gobernanza de Planes SaaS:** Validación estricta con `validate_ai_access` (HTTP 403 ante Plan Básico).
+- **Aislamiento Multitenant:** Inferencia y entrenamiento estrictamente aislados con el `tenant_id` del token JWT.
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU23-01** | **Bloqueo estricto por cuota de plan SaaS (Plan Básico sin acceso a IA)** | Tenant con Plan Básico activo (`has_ai_access: False`). | Petición `POST /api/ml/demand/train` con credenciales de tenant básico. | 1. Usuario intenta entrenar modelo de demanda.<br>2. `validate_ai_access` evalúa privilegios.<br>3. Detecta ausencia de módulo IA. | Código `HTTP 403 Forbidden`. Mensaje: *"El modulo de Inteligencia Artificial (Gemini y Machine Learning) requiere una suscripcion activa a Plan Profesional o Empresarial."* | Rechazo inmediato de la petición protegiendo las cuotas comerciales del SaaS. | **APROBADO** |
+| **CP-CU23-02** | **Entrenamiento y calibración de modelo supervisado con Scikit-Learn (Happy Path)** | Tenant con Plan Profesional activo (`elegance`). | Petición `POST /api/ml/demand/train` con `use_synthetic: True`, `n_estimators: 60`, `max_depth: 10`. | 1. Administrador solicita entrenamiento.<br>2. Extrae transacciones históricas o bootstrap.<br>3. Ajusta `RandomForestRegressor`.<br>4. Evalúa métricas ($R^2$, $MAE$, $RMSE$) y guarda `.joblib`. | Código `HTTP 200 OK`. Retorna metadatos del modelo, $R^2 \ge 0.80$, versión generada y persistencia en `ml_models`. | Modelo calibrado exitosamente con $R^2 \ge 0.84$ y artefacto serializado en disco. | **APROBADO** |
+| **CP-CU23-03** | **Inferencia cuantitativa de demanda por talla a 4 semanas de horizonte** | Modelo entrenado previamente y producto con variantes registrado. | Petición `POST /api/ml/demand/forecast` con `product_id`, `weeks_ahead: 4`, `confidence_level: 0.95`. | 1. Administrador solicita proyección.<br>2. Carga modelo `.joblib`.<br>3. Infiere curva de demanda semanal por talla.<br>4. Compara contra `inventory` y persiste en `demand_forecasts`. | Código `HTTP 200 OK`. Retorna desglose por talla (S, M, L, XL), unidades semanales, recomendación de reposición y estado de inventario. | Proyección semanal por talla obtenida con intervalos de confianza y déficit de stock calculado. | **APROBADO** |
+| **CP-CU23-04** | **Listado de alertas tempranas de reabastecimiento por quiebre de stock proyectado** | Variantes registradas en el catálogo del tenant. | Petición `GET /api/ml/demand/alerts`. | 1. Encargado consulta alertas.<br>2. Servicio compara inventario en percha vs demanda estimada del mes.<br>3. Clasifica urgencia (ALTA, MEDIA, BAJA). | Código `HTTP 200 OK`. Retorna lista priorizada con `variant_id`, `current_stock`, `recommended_reorder_units` y nivel de urgencia. | Alertas ordenadas jerárquicamente por criticidad de desabastecimiento. | **APROBADO** |
+| **CP-CU23-05** | **Consulta de auditoría y trazabilidad del modelo de Machine Learning activo** | Tenant con modelo calibrado previamente. | Petición `GET /api/ml/demand/latest-model`. | 1. Directivo consulta estado del modelo.<br>2. Consulta registro en tabla `ml_models`. | Código `HTTP 200 OK`. Retorna versión, hiperparámetros, métricas $R^2$/$MAE$/$RMSE$ y fecha de entrenamiento. | Auditoría completa del modelo recuperada con éxito. | **APROBADO** |
+
+**Evidencia de Ejecución Pytest (`backend/tests/test_cu23_demand_forecasting.py`):**
+```text
+tests/test_cu23_demand_forecasting.py::test_cu23_plan_basic_forbidden_403 PASSED [ 20%]
+tests/test_cu23_demand_forecasting.py::test_cu23_train_model_success PASSED       [ 40%]
+tests/test_cu23_demand_forecasting.py::test_cu23_forecast_demand_by_size PASSED   [ 60%]
+tests/test_cu23_demand_forecasting.py::test_cu23_stock_reorder_alerts PASSED      [ 80%]
+tests/test_cu23_demand_forecasting.py::test_cu23_latest_model_metadata PASSED    [100%]
+
+======================= 5 passed, 7 warnings in 22.72s ========================
+```
+
+---
+
 ## 4. 📊 Resumen Estadístico Consolidado de Cobertura
 
 ```
 ========================================================================================
 RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA, 2DA Y 3RA PRESENTACIÓN)
 ========================================================================================
-Total Casos de Prueba Formalizados:     98
-Casos de Prueba Aprobados (PASSED):     98 (100%)
+Total Casos de Prueba Formalizados:    103
+Casos de Prueba Aprobados (PASSED):    103 (100%)
 Casos de Prueba Fallidos (FAILED):       0 (0%)
 Casos de Prueba Bloqueados:              0 (0%)
 ----------------------------------------------------------------------------------------
@@ -393,11 +424,13 @@ Distribución por Caso de Uso:
   - CU20 (Reportes Ejecutivos por Voz y Gemini RAG):    4 Casos de Prueba  [100% OK]
   - CU21 (Exportar Reportes a PDF y Excel):             9 Casos de Prueba  [100% OK]
   - CU22 (Generar Dataset Sintético de Ventas y ML):    5 Casos de Prueba  [100% OK]
+  - CU23 (Predecir Demanda de Ropa por Talla - RF):     5 Casos de Prueba  [100% OK]
 ----------------------------------------------------------------------------------------
 Aislamiento Multitenant:                               Verificado al 100% (HTTP 404/403)
 Políticas de Negocio Inviolables (P1, P2, P3, P4, P5): Cumplimiento Estricto Verificado
 Inteligencia Artificial Generativa (Gemini 2.5 Flash): Verificado con RAG y Fallback Local
 Generación Estocástica de Datos y ML Pipeline (NumPy): Verificado al 100% (Estacionalidad/Gauss)
+Machine Learning Supervisado (RandomForestRegressor):  Verificado al 100% (R2 >= 0.80, MAE/RMSE)
 Exportación Multi-Formato (ReportLab + OpenPyXL):       Verificado al 100% (PDF/XLSX/CSV)
 Geolocalización Móvil (OpenStreetMap + OSRM/ORS):      Verificado al 100% (Vehicular y Peatonal)
 ========================================================================================
