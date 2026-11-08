@@ -7,7 +7,8 @@ const __dirname = dirname(__filename);
 
 // Determinación del entorno de ejecución
 const isRender = process.env.RENDER === 'true' || process.env.RENDER === '1';
-const isProd = process.env.NODE_ENV === 'production' || isRender;
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const isProd = process.env.NODE_ENV === 'production' || isRender || isVercel;
 
 // URL de la API: prioriza variable de entorno explícita, luego Render backend por defecto, o localhost para dev local
 const apiBaseUrl = (
