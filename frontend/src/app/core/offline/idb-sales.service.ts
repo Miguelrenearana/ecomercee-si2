@@ -30,6 +30,7 @@ export interface PendingOfflineSale {
   synced: boolean;
   synced_at?: string | null;
   sync_error?: string | null;
+  error?: string | null;
   items: PendingOfflineSaleItem[];
 }
 
